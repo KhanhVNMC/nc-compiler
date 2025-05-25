@@ -1,12 +1,5 @@
 uint main() {
-    uint a = 10;
-    uint* aPtr = &a;
+    while (true - true) {
 
-    for (uint i = 0; i < 1000; i++) {
-        a++;
     };
-
-    test(*aPtr);
-
-    return 0;
 };

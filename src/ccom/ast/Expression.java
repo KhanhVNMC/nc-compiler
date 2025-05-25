@@ -10,6 +10,19 @@ public class Expression {
 	public static abstract class ExpressionNode extends ASTNode {}
 	public static abstract class Identifiable extends ExpressionNode {}
 	
+	public static class IdentifiableExpression extends Identifiable {
+		public ExpressionNode expression;
+		
+		public IdentifiableExpression(ExpressionNode expr) {
+			this.expression = expr;
+		}
+		
+		@Override
+		public String toString() {
+			return "IdentifiableExpr(" + expression + ")";
+		}
+	}
+	
 	public static class IdentifierNode extends Identifiable {
 		public String name;
 		
@@ -85,11 +98,11 @@ public class Expression {
 		}
 	}
 	
-	public static class OffsetArrayNode extends ExpressionNode {
+	public static class SubscriptNode extends Identifiable {
 		ExpressionNode identifier;
 		ExpressionNode offset;
 		
-		public OffsetArrayNode(ExpressionNode identifier, ExpressionNode offset) {
+		public SubscriptNode(ExpressionNode identifier, ExpressionNode offset) {
 			this.offset = offset;
 			this.identifier = identifier;
 		}

@@ -9,10 +9,11 @@ import ccom.CompileToken.TokenType;
 import ccom.ast.Expression.BinaryOpNode;
 import ccom.ast.Expression.ExpressionNode;
 import ccom.ast.Expression.Identifiable;
+import ccom.ast.Expression.IdentifiableExpression;
 import ccom.ast.Expression.IdentifierNode;
 import ccom.ast.Expression.MemberOf;
 import ccom.ast.Expression.NumberNode;
-import ccom.ast.Expression.OffsetArrayNode;
+import ccom.ast.Expression.SubscriptNode;
 import ccom.ast.Expression.UnaryArithmeticNode;
 import ccom.ast.Expression.UnaryOpNode;
 import ccom.ast.Expression.CallNode;
@@ -125,14 +126,41 @@ public class AbstractSyntaxTree {
 	}
 	
 	/**
-	 * Parse identifiers like parent->child, parent.child->sub or simply
-	 * just "thing"
-	 * @param identifier the base token
-	 * @return an Identifiable object representing all of this
+	 * Recursively parses subscript expressions of the form identifier[index],
+	 * supporting chained subscripts like array[0][1]. Converts them into nested
+	 * SubscriptNode instances.
+	 *
+	 * @param expr The base identifiable expression
+	 * @return An Identifiable representing the entire subscript chain
+	 */
+	private Identifiable parseSubscriptNodes(Identifiable expr) {
+		Identifiable base = expr; // base node
+		if (peek().type != TokenType.LSQUARE) return base;
+		consume(TokenType.LSQUARE, "Expected '['");
+		// parse the expression inside the brackets
+		base = new SubscriptNode(base, parseExpression());
+		consume(TokenType.RSQUARE, "Expected ']' after opening subscript node");
+		// recursively check for and parse additional subscript expressions (e.g., `a[0][1]`).
+		return parseSubscriptNodes(base);
+	}
+
+	/**
+	 * Parses complex identifier expressions, including subscripted access
+	 * and chained member access. Handles:
+	 *
+	 * - Simple identifiers:          `thing`
+	 * - Subscripted identifiers:     `array[0]`
+	 * - Member access:               `object.field` or `object->field`
+	 * - Combined expressions:        `object[0]->field[1]`
+	 *
+	 * @param identifier The initial token representing the base identifier.
+	 * @return An Identifiable representing the full parsed identifier chain.
 	 */
 	public Identifiable parseIdentifier(Token identifier) {
 		// create a base identifier node
-		Identifiable expr = new IdentifierNode(identifier.lexeme);
+		Identifiable expr = parseSubscriptNodes(
+			new IdentifierNode(identifier.lexeme)
+		);
 		TokenType next = peek().type;
 		
 		// parent -> child recursive
@@ -437,25 +465,45 @@ public class AbstractSyntaxTree {
 			// this could either be
 			// Typedefed declare = thing;
 			// OR Identifier (+ - * /)= thing;
+			case LPAREN:
 			case IDENTIFIER: {
-				// for Identifier (user-typedefed)
-				if (peek().type == TokenType.IDENTIFIER 
-					// make sure Typedef* does not conflict with expr *= 
-				|| (peek().type == TokenType.STAR && !lookAheadIfMatch(TokenType.STAR, TokenType.EQ))) {
-					return parseDeclaration(token);
-				}
-				
-				// the token AFTER the identifier
-				// parse function calls
-				if (peek().type == TokenType.LPAREN) {
-					advance(); // consume the '(' token
-					return new StatementedExpression(
-						this.parseFunctionCall(token, ptrLevel) 
-					);
+				TokenType current = token.type;
+				// function calls and declaration cant have '(' as 
+				// the first token
+				if (current == TokenType.IDENTIFIER) {
+					// for Identifier (user-typedefed)
+					if (peek().type == TokenType.IDENTIFIER 
+						// make sure Typedef* does not conflict with expr *= 
+					|| (peek().type == TokenType.STAR && !lookAheadIfMatch(TokenType.STAR, TokenType.EQ))) {
+						return parseDeclaration(token);
+					}
+					
+					// the token AFTER the identifier
+					// parse function calls
+					if (peek().type == TokenType.LPAREN) {
+						advance(); // consume the '(' token
+						return new StatementedExpression(
+							this.parseFunctionCall(token, ptrLevel) 
+						);
+					}
 				}
 				
 				// parse the identifier node
-				Identifiable identifier = parseIdentifier(token);
+				Identifiable identifier = null;
+				if (current == TokenType.LPAREN) {
+					// for cases like *(&p + c)
+					identifier = new IdentifiableExpression(parseExpression());
+					consume(TokenType.RPAREN, "Expected enclosing ')'");
+					
+					// only allow pointer arithmetic to be used like this
+					if (ptrLevel <= 0) {
+						throw new RuntimeException("Expected pointer dereference for expression assignment!");
+					}
+					
+				} else {
+					identifier = parseIdentifier(token);
+				}
+				
 				// the token after the parsed identifier [parent->child[here]]
 				Token ahead = advance();
 				
@@ -697,12 +745,7 @@ public class AbstractSyntaxTree {
 			
 			// parse offset identifier[thingy]
 			if (afterIdentifier == TokenType.LSQUARE) {
-				consume(TokenType.LSQUARE, "Expected '['??");
-				ExpressionNode offset = parseExpression(); // parse the inner thingy
-				consume(TokenType.RSQUARE, "Expected ']' after offset '['");
-				return new OffsetArrayNode(
-					identifier, offset
-				);
+				return parseSubscriptNodes(identifier);
 			}
 			
 			return identifier;
@@ -723,6 +766,9 @@ public class AbstractSyntaxTree {
 			// if not enclosed by a ), error
 			consume(TokenType.RPAREN, "Expected ')'");
 			return expr;
+		case TRUE:
+		case FALSE:
+			return new NumberNode(token.type == TokenType.TRUE ? 1 : 0);
 		default:
 			throw new RuntimeException(token + ". Expected expression");
 		}

@@ -227,6 +227,8 @@ public class CompileLexer {
 	        case "uint": return TokenType.UINT;
 	        case "char": return TokenType.CHAR;
 	        case "void": return TokenType.VOID;
+	        case "true": return TokenType.TRUE;
+	        case "false": return TokenType.FALSE;
 	        default: return TokenType.IDENTIFIER;
 	    }
 	}

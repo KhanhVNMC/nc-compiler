@@ -10,7 +10,8 @@ public class CompileToken {
 	    LPAREN, RPAREN, LBRACE, RBRACE,
 	    SEMICOLON, COLON, AMPERSAND, 
 	    ANDAND, OR, OROR, BSR, BSL, XOR,
-	    EOF, TYPEDEF, STRUCT, LSQUARE, RSQUARE
+	    EOF, TYPEDEF, STRUCT, LSQUARE, RSQUARE,
+	    TRUE, FALSE
 	}
 	
 	public static class Token {
