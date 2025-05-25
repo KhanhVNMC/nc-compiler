@@ -828,11 +828,11 @@ public class AbstractSyntaxTree {
 		ExpressionNode exp = parseAddOrSub();
 		// keep marching forward
 		while (true) {
-			// if the next token is not <, >, >=, <=, ==, return the expr
+			// if the next token is not <, >, >=, <=, ==, != return the expr
 			if (!matchOneOf(
 				TokenType.GE, TokenType.LE, 
 				TokenType.GT, TokenType.LT, 
-				TokenType.EQEQ
+				TokenType.EQEQ, TokenType.DIFF
 			)) {
 				break;
 			}

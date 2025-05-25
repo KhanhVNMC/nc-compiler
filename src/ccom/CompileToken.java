@@ -11,7 +11,7 @@ public class CompileToken {
 	    SEMICOLON, COLON, AMPERSAND, 
 	    ANDAND, OR, OROR, BSR, BSL, XOR,
 	    EOF, TYPEDEF, STRUCT, LSQUARE, RSQUARE,
-	    TRUE, FALSE
+	    TRUE, FALSE, DIFF
 	}
 	
 	public static class Token {

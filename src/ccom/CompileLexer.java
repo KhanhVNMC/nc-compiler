@@ -109,6 +109,10 @@ public class CompileLexer {
 			addToken(TokenType.COMMA);
 			break;
 		case '!':
+			if (match('=')) {
+				addToken(TokenType.DIFF);
+				break;
+			}
 			addToken(TokenType.BANG);
 			break;
 		case '.':
