@@ -1,6 +1,3 @@
 void main() {
-    char string[] = {
-        char1(),
-        char2()
-    };
+    uint i = 1 << 0xCAFE - 0b10101010;
 }

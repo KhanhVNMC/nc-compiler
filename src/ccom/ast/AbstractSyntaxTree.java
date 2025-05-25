@@ -927,8 +927,22 @@ public class AbstractSyntaxTree {
 		switch (token.type) {
 		case LITERAL_CHAR:
 			return new CharacterNode(token.lexeme.charAt(1));
-		case NUMBER:
-			return new NumberNode(Integer.parseInt(token.lexeme));
+		case NUMBER: {
+			String number = token.lexeme.toLowerCase(); // the token (lowercased)
+			int radix = 10; // default is
+			String digits = number; // the digits
+
+			// check for hex or binary prefix (0x, 0b)
+			if (number.startsWith("0x")) {
+			    radix = 16;
+			    digits = number.substring(2);
+			} else if (number.startsWith("0b")) {
+			    radix = 2;
+			    digits = number.substring(2);
+			}
+
+			return new NumberNode(Integer.parseInt(digits, radix));
+		}
 		case IDENTIFIER:
 			// look one token ahead of the identifier
 			TokenType next = peek().type;

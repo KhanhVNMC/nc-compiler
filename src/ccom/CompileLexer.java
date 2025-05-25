@@ -156,10 +156,25 @@ public class CompileLexer {
 	 * Scan the next number
 	 */
 	private void number() {
-		while (isDigit(peek())) {
-			advance();	
-		}
-		addToken(TokenType.NUMBER);
+	    if (peek() == 'x' || peek() == 'X') {
+	        // handle hexadecimal
+	        advance(); // consume 'x' or 'X'
+	        while (isHexDigit(peek())) {
+	            advance();
+	        }
+	    } else if (peek() == 'b' || peek() == 'B') {
+	        // handle binary
+	        advance(); // consume 'b' or 'B'
+	        while (isBinaryDigit(peek())) {
+	            advance();
+	        }
+	    } else {
+	        // handle normal decimal
+	        while (isDigit(peek())) {
+	            advance();
+	        }
+	    }
+        addToken(TokenType.NUMBER);
 	}
 	
 	private void charLiteral() {
@@ -230,6 +245,23 @@ public class CompileLexer {
 	private boolean isDigit(char c) {
 		return c >= '0' && c <= '9';
 	}
+	
+	/**
+	 * @return true if A-F or a-f
+	 */
+	private boolean isHexDigit(char c) {
+	    return (c >= '0' && c <= '9') ||
+	           (c >= 'a' && c <= 'f') ||
+	           (c >= 'A' && c <= 'F');
+	}
+	
+	/**
+	 * @return true if 0 or 1
+	 */
+	private boolean isBinaryDigit(char c) {
+	    return c == '0' || c == '1';
+	}
+
 	
 	/**
 	 * @return true if character (non-whitespace)
