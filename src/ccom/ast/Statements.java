@@ -1,5 +1,6 @@
 package ccom.ast;
 
+import java.lang.classfile.AnnotationValue.OfAnnotation;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,18 +9,28 @@ import ccom.CompileToken.TokenType;
 import ccom.ast.Expressions.ExpressionNode;
 import ccom.ast.Expressions.Identifiable;
 
+/**
+ * Contains classes that define the statement structure of the AST.
+ */
 public class Statements {
-	public static abstract class StatementNode extends ASTNode {}
-	/*
-	 * This is for while, for, if, etc
-	 */
-	public static interface OptionalScopedStatement {};
-	
+	/**
+     * Base class for all statement nodes.
+     */
+    public static abstract class StatementNode extends ASTNode {}
+
+    /**
+     * Marker interface for statements that may have a scoped body.
+     */
+    public static interface OptionalScopedStatement {}
+    
+    /**
+     * Represents a function declaration.
+     */
 	public static class FunctionDeclaration {
 		DeclaredType returnType; // null == void
-		int returnPtrLevel = 0;
-		Identifiable identifier;
-		List<FunctionParam> parameters;
+		int returnPtrLevel = 0; // the return ptr level (Eg. void**)
+		Identifiable identifier; // the func name
+		List<FunctionParam> parameters; 
 		ScopedStatements body;
 		
 		public FunctionDeclaration(DeclaredType type, int ptrLevel, Identifiable name, List<FunctionParam> params, ScopedStatements body) {
@@ -36,6 +47,9 @@ public class Statements {
 		}
 	}
 	
+	/**
+     * Represents a function parameter.
+     */
 	public static class FunctionParam {
 		DeclaredType type;
 		int ptrLevel = 0;
@@ -47,6 +61,10 @@ public class Statements {
 			this.paramName = name;
 		}
 		
+        /**
+         * Constructs a function parameter from a variable declaration.
+         * @throws RuntimeException if an initial value is provided (not allowed).
+         */
 		public static FunctionParam fromDeclaration(DeclarationStatement declare) {
 			if (declare.initialValue != null) {
 				throw new RuntimeException("Function parameter can't have initial value in Ngu-C!");
@@ -60,6 +78,9 @@ public class Statements {
 		}
 	}
 	
+    /**
+     * Represents a return statement in a function.
+     */
 	public static class FuncReturnStatement extends StatementNode {
 		ExpressionNode returnValue;
 		
@@ -72,7 +93,10 @@ public class Statements {
 			return "ReturnFunc(" + returnValue + ")";
 		}
 	}
-	
+
+    /**
+     * Represents a block of statements enclosed in a scope.
+     */
 	public static class ScopedStatements extends StatementNode {
 		List<StatementNode> statements = new ArrayList<>();
 		
@@ -83,7 +107,10 @@ public class Statements {
 			return builder.append("}").toString();
 		}
 	}
-	
+
+    /**
+     * Represents an if-else conditional block.
+     */
 	public static class ConditionBlock extends StatementNode implements OptionalScopedStatement {
 		ExpressionNode condition;
 		StatementNode ifBody;
@@ -101,6 +128,9 @@ public class Statements {
 		}
 	}
 	
+	/**
+     * Represents a while loop construct.
+     */
 	public static class WhileLoopBlock extends StatementNode implements OptionalScopedStatement {
 		ExpressionNode condition;
 		StatementNode whileBody;
@@ -116,6 +146,9 @@ public class Statements {
 		}
 	}
 	
+	 /**
+     * Represents a for loop.
+     */
 	public static class ForStatement extends StatementNode implements OptionalScopedStatement {
 		StatementNode initializer;
 		ExpressionNode condition;
@@ -141,15 +174,36 @@ public class Statements {
 		Identifiable identifier;
 		ExpressionNode initialValue;
 		
+		boolean isArray = false;
+		ExpressionNode arraySize; // new field
+
+		/**
+		 * Constructor for scalar (non-array) variable declarations.
+		 */
 		public DeclarationStatement(DeclaredType type, int ptrLevel, Identifiable name, ExpressionNode initial) {
 			this.type = type;
 			this.pointerLevel = ptrLevel;
 			this.identifier = name;
 			this.initialValue = initial;
 		}
+
+		/**
+		 * Constructor for array declarations.
+		 */
+		public DeclarationStatement(DeclaredType type, int ptrLevel, Identifiable name, ExpressionNode sizeExpr, boolean isArray) {
+			this.type = type;
+			this.pointerLevel = ptrLevel;
+			this.identifier = name;
+			this.isArray = isArray;
+			this.arraySize = sizeExpr;
+			this.initialValue = null;
+		}
 		
 		@Override
 		public String toString() {
+			if (isArray) {
+				return "DeclareArr(" + type + ", " + pointerLevel + ", " + identifier + "[" + arraySize + "])";
+			}
 			return "DeclareVar(" + type + ", " + pointerLevel + ", " + identifier + ", " + initialValue + ")";
 		}
 	}

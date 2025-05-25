@@ -125,6 +125,8 @@ public class AbstractSyntaxTree {
 		throw new RuntimeException(message);
 	}
 	
+	
+	
 	/**
 	 * Recursively parses subscript expressions of the form identifier[index],
 	 * supporting chained subscripts like array[0][1]. Converts them into nested
@@ -302,8 +304,13 @@ public class AbstractSyntaxTree {
 		
 		// if there is a =, its a declaration w/ assignment
 		if (peek().type == TokenType.EQ) {
-			advance(); // what the fuck?
+			advance(); // consume the '=' token
 			statement.initialValue = parseExpression(); // assigned value
+		} else if (peek().type == TokenType.LSQUARE) {
+			advance(); // consume the opening bracket
+			statement.isArray = true;
+			statement.arraySize = parseExpression();
+			consume(TokenType.RSQUARE, "Expected ']' after array declaration");
 		}
 		
 		return statement;
@@ -499,8 +506,8 @@ public class AbstractSyntaxTree {
 					if (ptrLevel <= 0) {
 						throw new RuntimeException("Expected pointer dereference for expression assignment!");
 					}
-					
 				} else {
+					// for normal cases
 					identifier = parseIdentifier(token);
 				}
 				
