@@ -1,7 +1,6 @@
-char hello[] = "Hello";
-uint test[] = { 's', 1 };
-
-uint main() {
-    char hello[] = "Hello";
-    char hi[] = {};
+void main() {
+    char string[] = {
+        char1(),
+        char2()
+    };
 }

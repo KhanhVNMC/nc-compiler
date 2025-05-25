@@ -132,6 +132,10 @@ public class AbstractSyntaxTree {
 		throw new RuntimeException(message);
 	}
 	
+	/**
+	 * Turn the given tokens into a full AST
+	 * @return the AST representing this Ngu-C program
+	 */
 	public ProgramAST parse() {
 		ProgramAST ast = new ProgramAST();
 		while (!isAtEnd() && !matchOneOf(TokenType.EOF)) {
@@ -176,7 +180,7 @@ public class AbstractSyntaxTree {
 	 * 
 	 * @return a StructDefinition object representing the struct
 	 */
-	public StructDefinition parseStructDefinition() {
+	private StructDefinition parseStructDefinition() {
 	    consume(TokenType.STRUCT, "Expected 'struct' keyword");
 	    
 		// pretty much the same as declaring variables
@@ -217,7 +221,7 @@ public class AbstractSyntaxTree {
 	 * 
 	 * @return a function object
 	 */
-	public GlobalDefinitionNode parseGlobalDeclaration() {
+	private GlobalDefinitionNode parseGlobalDeclaration() {
 		// pretty much the same as declaring variables
 		Token typeToken = advance();
 		
@@ -247,7 +251,7 @@ public class AbstractSyntaxTree {
 		// the name of the function
 		Token ahead = consume(TokenType.IDENTIFIER, "Expected name");
 		
-		// parse function
+		// parse function, allow "void"
 		if (check(TokenType.LPAREN)) {
 			return parseFunctionDeclaration(type, ptrLevel, ahead);
 		}
@@ -291,7 +295,17 @@ public class AbstractSyntaxTree {
 		return global;
 	}
 	
-	public FunctionDeclaration parseFunctionDeclaration(DeclaredType type, int ptrLevel, Token ahead) {
+	/**
+	 * Parse function declaration, the pointer must be at the '(' token at this point
+	 * 
+	 * void function(uint param1, uint param2)
+	 *              ^ here
+	 *              
+	 * @param type the return type
+	 * @param ptrLevel the pointer level (void**) = 2
+	 * @param nameToken the function name 
+	 */
+	private FunctionDeclaration parseFunctionDeclaration(DeclaredType type, int ptrLevel, Token nameToken) {
 		// parse parameters "(void* param1, uint param2...)"
 		consume(TokenType.LPAREN, "Expected '(' after function name declaration");
 		List<FunctionParam> params = new ArrayList<>();
@@ -308,7 +322,7 @@ public class AbstractSyntaxTree {
 		consume(TokenType.RPAREN, "Expected ')' after function parameters");
 		
 		return new FunctionDeclaration(
-			type, ptrLevel, new IdentifierNode(ahead.lexeme), // type[*] name
+			type, ptrLevel, new IdentifierNode(nameToken.lexeme), // type[*] name
 			params, // (params...)
 			parseScopedBody() // { body }
 		);
@@ -455,6 +469,17 @@ public class AbstractSyntaxTree {
 		return statement;
 	}
 	
+	/**
+	 * Parse an array declaration with determined data
+	 * 
+	 * This function will start to parse when the pointer is
+	 * on the '=' token
+	 * 
+	 * uint list[] = {1, 2, 3, 4};
+	 * 			   ^ here
+	 * 
+	 * @param statement the initial statement
+	 */
 	public void parseArrayDeclarationWithoutSize(DeclarationStatement statement) {
 		consume(TokenType.EQ, "Array declaration without size must be initialized");
 		List<ExpressionNode> declaredArray = new ArrayList<>();
