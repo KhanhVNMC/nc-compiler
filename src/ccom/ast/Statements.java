@@ -8,6 +8,7 @@ import ccom.CompileToken.Token;
 import ccom.CompileToken.TokenType;
 import ccom.ast.Expressions.ExpressionNode;
 import ccom.ast.Expressions.Identifiable;
+import ccom.ast.Expressions.IdentifierNode;
 
 /**
  * Contains classes that define the statement structure of the AST.
@@ -17,67 +18,12 @@ public class Statements {
      * Base class for all statement nodes.
      */
     public static abstract class StatementNode extends ASTNode {}
-
+    
     /**
      * Marker interface for statements that may have a scoped body.
      */
     public static interface OptionalScopedStatement {}
     
-    /**
-     * Represents a function declaration.
-     */
-	public static class FunctionDeclaration {
-		DeclaredType returnType; // null == void
-		int returnPtrLevel = 0; // the return ptr level (Eg. void**)
-		Identifiable identifier; // the func name
-		List<FunctionParam> parameters; 
-		ScopedStatements body;
-		
-		public FunctionDeclaration(DeclaredType type, int ptrLevel, Identifiable name, List<FunctionParam> params, ScopedStatements body) {
-			this.returnType = type;
-			this.identifier = name;
-			this.returnPtrLevel = ptrLevel;
-			this.parameters = params;
-			this.body = body;
-		}
-		
-		@Override
-		public String toString() {
-			return "DeclareFunc(" + returnType + ", ptrLevel: " + returnPtrLevel + ", " + identifier + ", params: " + parameters + ", Body{" + body + "})";
-		}
-	}
-	
-	/**
-     * Represents a function parameter.
-     */
-	public static class FunctionParam {
-		DeclaredType type;
-		int ptrLevel = 0;
-		Identifiable paramName;
-		
-		public FunctionParam(DeclaredType type, int ptrLevel, Identifiable name) {
-			this.type = type;
-			this.ptrLevel = ptrLevel;
-			this.paramName = name;
-		}
-		
-        /**
-         * Constructs a function parameter from a variable declaration.
-         * @throws RuntimeException if an initial value is provided (not allowed).
-         */
-		public static FunctionParam fromDeclaration(DeclarationStatement declare) {
-			if (declare.initialValue != null) {
-				throw new RuntimeException("Function parameter can't have initial value in Ngu-C!");
-			}
-			return new FunctionParam(declare.type, declare.pointerLevel, declare.identifier);
-		}
-		
-		@Override
-		public String toString() {
-			return "FuncParam(" + type + ", " + ptrLevel + ", " + paramName + ")";
-		}
-	}
-	
     /**
      * Represents a return statement in a function.
      */

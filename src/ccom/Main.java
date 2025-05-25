@@ -15,7 +15,7 @@ public class Main {
 		CompileLexer lex = new CompileLexer(cc);
 		//lex.scanTokens().forEach(tok -> System.out.println(tok));
 		AbstractSyntaxTree syntaxTree = new AbstractSyntaxTree(lex);
-		System.out.println(syntaxTree.parseFunctionDeclaration());
+		System.out.println(syntaxTree.parse());
 	}
 
 }

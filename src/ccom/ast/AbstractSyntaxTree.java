@@ -16,13 +16,15 @@ import ccom.ast.Expressions.NumberNode;
 import ccom.ast.Expressions.SubscriptNode;
 import ccom.ast.Expressions.UnaryArithmeticNode;
 import ccom.ast.Expressions.UnaryOpNode;
+import ccom.ast.GlobalDefinitions.FunctionDeclaration;
+import ccom.ast.GlobalDefinitions.FunctionParam;
+import ccom.ast.GlobalDefinitions.ProgramAST;
+import ccom.ast.GlobalDefinitions.StructDefinition;
 import ccom.ast.Expressions.CallNode;
 import ccom.ast.Statements.DeclarationStatement;
 import ccom.ast.Statements.DeclaredType;
 import ccom.ast.Statements.ForStatement;
 import ccom.ast.Statements.FuncReturnStatement;
-import ccom.ast.Statements.FunctionDeclaration;
-import ccom.ast.Statements.FunctionParam;
 import ccom.ast.Statements.ConditionBlock;
 import ccom.ast.Statements.AssignmentStatment;
 import ccom.ast.Statements.ScopedStatements;
@@ -62,7 +64,7 @@ public class AbstractSyntaxTree {
 	}
 	
 	/**
-	 * Return true if the next token match one of the given
+	 * Return true if the CURRENT (peek()) token match one of the given
 	 * token types
 	 * 
 	 * Also advances the pointer forward, if matches
@@ -97,6 +99,8 @@ public class AbstractSyntaxTree {
 	/**
 	 * @return true if the token at the pointer is the same as the given
 	 * type, false if the pointer is at the end of the stream
+	 * 
+	 * Same as peek().type == type
 	 */
 	private boolean check(TokenType type) {
 		return !isAtEnd() && peek().type == type;
@@ -125,60 +129,74 @@ public class AbstractSyntaxTree {
 		throw new RuntimeException(message);
 	}
 	
-	
-	
-	/**
-	 * Recursively parses subscript expressions of the form identifier[index],
-	 * supporting chained subscripts like array[0][1]. Converts them into nested
-	 * SubscriptNode instances.
-	 *
-	 * @param expr The base identifiable expression
-	 * @return An Identifiable representing the entire subscript chain
-	 */
-	private Identifiable parseSubscriptNodes(Identifiable expr) {
-		Identifiable base = expr; // base node
-		if (peek().type != TokenType.LSQUARE) return base;
-		consume(TokenType.LSQUARE, "Expected '['");
-		// parse the expression inside the brackets
-		base = new SubscriptNode(base, parseExpression());
-		consume(TokenType.RSQUARE, "Expected ']' after opening subscript node");
-		// recursively check for and parse additional subscript expressions (e.g., `a[0][1]`).
-		return parseSubscriptNodes(base);
-	}
-
-	/**
-	 * Parses complex identifier expressions, including subscripted access
-	 * and chained member access. Handles:
-	 *
-	 * - Simple identifiers:          `thing`
-	 * - Subscripted identifiers:     `array[0]`
-	 * - Member access:               `object.field` or `object->field`
-	 * - Combined expressions:        `object[0]->field[1]`
-	 *
-	 * @param identifier The initial token representing the base identifier.
-	 * @return An Identifiable representing the full parsed identifier chain.
-	 */
-	public Identifiable parseIdentifier(Token identifier) {
-		// create a base identifier node
-		Identifiable expr = parseSubscriptNodes(
-			new IdentifierNode(identifier.lexeme)
-		);
-		TokenType next = peek().type;
-		
-		// parent -> child recursive
-		if (next == TokenType.DOT || next == TokenType.ARROW) {
-			consume(next, "Expected . or ->");
-			// next children
-			expr = new MemberOf(
-				expr, parseIdentifier(advance()), // parent, child
-				next == TokenType.ARROW // -> or .
-			);
+	public ProgramAST parse() {
+		ProgramAST ast = new ProgramAST();
+		while (!isAtEnd() && !matchOneOf(TokenType.EOF)) {
+			// parse struct
+			switch (peek().type) {
+			case STRUCT: {
+				ast.structs.add(parseStructDefinition());
+				break;
+			}
+			case IDENTIFIER:
+			case VOID:
+			case UINT: {
+				ast.functions.add(parseFunctionDeclaration());
+				break;
+			}
+			default:
+				throw new IllegalArgumentException("Unexpected value: " + peek().type);
+			}
 		}
-		return expr;
+		return ast;
+	}
+	
+	/**
+	 * Parse a struct definition
+	 * Example:
+	 * struct Thingy {
+	 *   uint a;
+	 *   uint b[10];
+	 * };
+	 * 
+	 * @return a StructDefinition object representing the struct
+	 */
+	public StructDefinition parseStructDefinition() {
+	    consume(TokenType.STRUCT, "Expected 'struct' keyword");
+	    
+		// pretty much the same as declaring variables
+	    Token structNameToken = consume(TokenType.IDENTIFIER, "Expected struct name");
+	    IdentifierNode structName = new IdentifierNode(structNameToken.lexeme);
+	    consume(TokenType.LBRACE, "Expected '{' to start struct body");
+	    
+	    List<DeclarationStatement> fields = new ArrayList<>();
+	    // parse declarations until closing brace '}'
+	    while (!matchOneOf(TokenType.RBRACE)) {
+	        // skip extra semicolons
+	        if (peek().type == TokenType.SEMICOLON) {
+	            advance();
+	            continue;
+	        }
+	        // parse a declaration within the struct body
+	        Token typeToken = advance();  // advance to the type token of the field
+	        fields.add(parseDeclaration(typeToken));
+	        consume(TokenType.SEMICOLON, "Expected ';' after struct field declaration");
+	    }
+	    
+        consume(TokenType.SEMICOLON, "Expected ';' after struct declaration");
+	    return new StructDefinition(structName, fields);
 	}
 	
 	/**
 	 * Parse a function declaration
+	 * Example:
+	 * void function() {
+	 *     call();
+	 *     if (thing) {
+	 *     		...;
+	 *     };
+	 * }
+	 * 
 	 * @return a function object
 	 */
 	public FunctionDeclaration parseFunctionDeclaration() {
@@ -231,6 +249,56 @@ public class AbstractSyntaxTree {
 			params, // (params...)
 			parseScopedBody() // { body }
 		);
+	}
+	
+	/**
+	 * Recursively parses subscript expressions of the form identifier[index],
+	 * supporting chained subscripts like array[0][1]. Converts them into nested
+	 * SubscriptNode instances.
+	 *
+	 * @param expr The base identifiable expression
+	 * @return An Identifiable representing the entire subscript chain
+	 */
+	private Identifiable parseSubscriptNodes(Identifiable expr) {
+		Identifiable base = expr; // base node
+		if (peek().type != TokenType.LSQUARE) return base;
+		consume(TokenType.LSQUARE, "Expected '['");
+		// parse the expression inside the brackets
+		base = new SubscriptNode(base, parseExpression());
+		consume(TokenType.RSQUARE, "Expected ']' after opening subscript node");
+		// recursively check for and parse additional subscript expressions (e.g., `a[0][1]`).
+		return parseSubscriptNodes(base);
+	}
+
+	/**
+	 * Parses complex identifier expressions, including subscripted access
+	 * and chained member access. Handles:
+	 *
+	 * - Simple identifiers:          `thing`
+	 * - Subscripted identifiers:     `array[0]`
+	 * - Member access:               `object.field` or `object->field`
+	 * - Combined expressions:        `object[0]->field[1]`
+	 *
+	 * @param identifier The initial token representing the base identifier.
+	 * @return An Identifiable representing the full parsed identifier chain.
+	 */
+	public Identifiable parseIdentifier(Token identifier) {
+		// create a base identifier node
+		Identifiable expr = parseSubscriptNodes(
+			new IdentifierNode(identifier.lexeme)
+		);
+		TokenType next = peek().type;
+		
+		// parent -> child recursive
+		if (next == TokenType.DOT || next == TokenType.ARROW) {
+			consume(next, "Expected . or ->");
+			// next children
+			expr = new MemberOf(
+				expr, parseIdentifier(advance()), // parent, child
+				next == TokenType.ARROW // -> or .
+			);
+		}
+		return expr;
 	}
 	
 	///// STATEMENT PARSING START /////
@@ -591,6 +659,16 @@ public class AbstractSyntaxTree {
 	/**
 	 * Parse expression. E.g. a * (b + c) >= d<br>
 	 * The process starts at the current token (peek())
+	 * 
+	 * This will consume the entire expression
+	 * For example, we have:
+	 * 
+	 * 1 * (2 + 3)
+	 * ^ POINTER HERE
+	 * 
+	 * After the parse
+	 * 1 * (2 + 3)|
+	 * 	          ^ POINTER HERE
 	 * 
 	 * @return a binary tree representing order of expressions
 	 */

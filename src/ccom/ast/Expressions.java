@@ -51,6 +51,21 @@ public class Expressions {
 		}
 	}
 	
+	public static class SubscriptNode extends Identifiable {
+		ExpressionNode identifier;
+		ExpressionNode offset;
+		
+		public SubscriptNode(ExpressionNode identifier, ExpressionNode offset) {
+			this.offset = offset;
+			this.identifier = identifier;
+		}
+		
+		@Override
+		public String toString() {
+			return "Subscript(" + identifier + "[" + offset + "])";
+		}
+	}
+	
 	public static class UnaryOpNode extends ExpressionNode {
 		public TokenType operator;
 		public ExpressionNode expression;
@@ -93,21 +108,6 @@ public class Expressions {
 		@Override
 		public String toString() {
 			return "NumberNode(" + value + ")";
-		}
-	}
-	
-	public static class SubscriptNode extends Identifiable {
-		ExpressionNode identifier;
-		ExpressionNode offset;
-		
-		public SubscriptNode(ExpressionNode identifier, ExpressionNode offset) {
-			this.offset = offset;
-			this.identifier = identifier;
-		}
-		
-		@Override
-		public String toString() {
-			return "Offset(" + identifier + "[" + offset + "])";
 		}
 	}
 	
