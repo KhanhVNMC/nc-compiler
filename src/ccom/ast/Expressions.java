@@ -1,12 +1,10 @@
 package ccom.ast;
 
-import java.security.PublicKey;
 import java.util.List;
 
 import ccom.CompileToken.TokenType;
-import ccom.ast.Expression.ExpressionNode;
 
-public class Expression {
+public class Expressions {
 	public static abstract class ExpressionNode extends ASTNode {}
 	public static abstract class Identifiable extends ExpressionNode {}
 	

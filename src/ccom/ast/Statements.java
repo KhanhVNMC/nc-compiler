@@ -5,10 +5,10 @@ import java.util.List;
 
 import ccom.CompileToken.Token;
 import ccom.CompileToken.TokenType;
-import ccom.ast.Expression.ExpressionNode;
-import ccom.ast.Expression.Identifiable;
+import ccom.ast.Expressions.ExpressionNode;
+import ccom.ast.Expressions.Identifiable;
 
-public class Statement {
+public class Statements {
 	public static abstract class StatementNode extends ASTNode {}
 	/*
 	 * This is for while, for, if, etc
