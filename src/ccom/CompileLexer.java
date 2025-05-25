@@ -165,7 +165,7 @@ public class CompileLexer {
 	private void charLiteral() {
 		if (isAtEnd()) throw new RuntimeException("Unterminated character literal");
 		char c = advance();
-		// Handle escape characters like '\n' or '\''
+		// handle escape characters like '\n' or '\''
 		if (c == '\\') {
 			if (isAtEnd()) throw new RuntimeException("Unterminated escape in character literal");
 			advance(); // skip the escaped char

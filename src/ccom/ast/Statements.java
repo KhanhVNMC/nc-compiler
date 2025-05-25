@@ -121,7 +121,10 @@ public class Statements {
 		ExpressionNode initialValue;
 		
 		boolean isArray = false;
-		ExpressionNode arraySize; // new field
+		ExpressionNode arraySize; // new field (for type thing[num])
+		
+		// for declares like this: type thing[] = {};
+		List<ExpressionNode> definedArray = null; 
 
 		/**
 		 * Constructor for scalar (non-array) variable declarations.
@@ -147,8 +150,10 @@ public class Statements {
 		
 		@Override
 		public String toString() {
-			if (isArray) {
+			if (isArray && definedArray == null) {
 				return "DeclareArr(" + type + ", " + pointerLevel + ", " + identifier + "[" + arraySize + "])";
+			} else if (definedArray != null) {
+				return "DefinedArr(" + type + ", " + pointerLevel + ", " + identifier + " {" + definedArray + "})";
 			}
 			return "DeclareVar(" + type + ", " + pointerLevel + ", " + identifier + ", " + initialValue + ")";
 		}

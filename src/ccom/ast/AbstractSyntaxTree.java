@@ -273,8 +273,16 @@ public class AbstractSyntaxTree {
 		} else if (peek().type == TokenType.LSQUARE) {
 			advance(); // consume the opening bracket
 			global.statement.isArray = true;
-			global.statement.arraySize = parseExpression();
-			consume(TokenType.RSQUARE, "Expected ']' after array declaration");
+			// array declaration without size (e.g. char s[] = "hello";)
+			// basically, if the thing is "[]"
+			if (matchOneOf(TokenType.RSQUARE)) {
+				// parse declarations
+				parseArrayDeclarationWithoutSize(global.statement);
+			} else { // else, the thing is "[<expression>];"
+				// array dec with size (Expression)
+				global.statement.arraySize = parseExpression();
+				consume(TokenType.RSQUARE, "Expected ']' after array declaration");
+			}
 		}
 		
 		// expected a ';'
@@ -432,11 +440,45 @@ public class AbstractSyntaxTree {
 		} else if (peek().type == TokenType.LSQUARE) {
 			advance(); // consume the opening bracket
 			statement.isArray = true;
-			statement.arraySize = parseExpression();
-			consume(TokenType.RSQUARE, "Expected ']' after array declaration");
+			// array declaration without size (e.g. char s[] = "hello";)
+			// basically, if the thing is "[]"
+			if (matchOneOf(TokenType.RSQUARE)) {
+				// parse declarations like: char s[] = {'s'};
+				parseArrayDeclarationWithoutSize(statement);
+			} else { // else, the thing is "[<expression>];"
+				// array dec with size (Expression)
+				statement.arraySize = parseExpression();
+				consume(TokenType.RSQUARE, "Expected ']' after array declaration");
+			}
 		}
 		
 		return statement;
+	}
+	
+	public void parseArrayDeclarationWithoutSize(DeclarationStatement statement) {
+		consume(TokenType.EQ, "Array declaration without size must be initialized");
+		List<ExpressionNode> declaredArray = new ArrayList<>();
+		
+		// handle string literal initialization (e.g. char s[] = "hello";)
+		if (peek().type == TokenType.STRING) {
+			// the string token itself
+			String stringLiteral = advance().lexeme;
+			for (int i = 1; i < stringLiteral.length() - 1; i++) {
+				declaredArray.add(new CharacterNode(stringLiteral.charAt(i)));
+			}
+			// null terminated character \0
+			declaredArray.add(new CharacterNode('\0'));
+		} else if (matchOneOf(TokenType.LBRACE)) { // handle array initialization via brace-enclosed values (e.g. uint arr[] = {1, 2, 3};)
+			// check for elements inside the braces
+			if (peek().type != TokenType.RBRACE) {
+				do {
+					// parse each expression inside the initializer list
+					declaredArray.add( parseExpression() );
+				} while (matchOneOf(TokenType.COMMA)); // seperated by ","
+			}
+			consume(TokenType.RBRACE, "Expected '}' after array initialization");
+		}
+		statement.definedArray = declaredArray;
 	}
 	
 	/**
