@@ -10,7 +10,7 @@ import ccom.ast.AbstractSyntaxTree;
 public class Main {
 
 	public static void main(String[] args) throws IOException {
-		var cc = Files.readString(Path.of("test.c"));
+		var cc = Files.readString(Path.of("test2.c"));
 		System.out.println(cc);
 		CompileLexer lex = new CompileLexer(cc);
 		//lex.scanTokens().forEach(tok -> System.out.println(tok));

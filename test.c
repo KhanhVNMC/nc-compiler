@@ -6,12 +6,12 @@ struct Person {
 };
 
 Person createPerson(
-    char* name, uint lname, 
-    uint age, uint weight, uint height
+    char* name,uint lname, 
+    uint age,uint weight, uint height
 ) {
     Person p;
     for (uint i = 0; i < lname; i++) {
-        p->name[i] = name[i];
+        p.name[i] = name[i];
     };
     p.weight = weight;
     p.height = height;
@@ -20,7 +20,7 @@ Person createPerson(
 }
 
 uint main() {
-    char name[10];
+    char name[true + 1];
     createPerson(name, 10, 12, 45, 150);
     return 0;
 }

@@ -24,7 +24,20 @@ public class GlobalDefinitions {
     	
     	@Override
     	public String toString() {
-    		return "ProgramASTree{" + globalVariables + "\n" + structs + "\n" + functions + "}";
+    		return "ProgramASTree{" + globalVariables + ",\n" + structs + ",\n" + functions + "}";
+    	}
+    }
+    
+    public static class GlobalVarDefinition extends GlobalDefinitionNode {
+    	DeclarationStatement statement;
+    	
+    	public GlobalVarDefinition(DeclarationStatement statement) {
+    		this.statement = statement;
+    	}
+    	
+    	@Override
+    	public String toString() {
+    		return "GlobalDec(" + this.statement + ")";
     	}
     }
     

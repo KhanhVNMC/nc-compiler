@@ -111,6 +111,17 @@ public class Expressions {
 		}
 	}
 	
+	public static class CharacterNode extends NumberNode {
+		public CharacterNode(char c) {
+			super((int)c);
+		}
+		
+		@Override
+		public String toString() {
+			return "CharNode(" + ((char)value) + ")";
+		}
+	}
+	
 	public static class CallNode extends ExpressionNode {
 		ExpressionNode callee;
 		List<ExpressionNode> arguments;

@@ -18,9 +18,12 @@ import ccom.ast.Expressions.UnaryArithmeticNode;
 import ccom.ast.Expressions.UnaryOpNode;
 import ccom.ast.GlobalDefinitions.FunctionDeclaration;
 import ccom.ast.GlobalDefinitions.FunctionParam;
+import ccom.ast.GlobalDefinitions.GlobalDefinitionNode;
 import ccom.ast.GlobalDefinitions.ProgramAST;
 import ccom.ast.GlobalDefinitions.StructDefinition;
+import ccom.ast.GlobalDefinitions.GlobalVarDefinition;
 import ccom.ast.Expressions.CallNode;
+import ccom.ast.Expressions.CharacterNode;
 import ccom.ast.Statements.DeclarationStatement;
 import ccom.ast.Statements.DeclaredType;
 import ccom.ast.Statements.ForStatement;
@@ -138,11 +141,23 @@ public class AbstractSyntaxTree {
 				ast.structs.add(parseStructDefinition());
 				break;
 			}
+			// for function and global var declarations
 			case IDENTIFIER:
 			case VOID:
+			case CHAR:
 			case UINT: {
-				ast.functions.add(parseFunctionDeclaration());
+				GlobalDefinitionNode parsed = parseGlobalDeclaration();
+				if (parsed instanceof FunctionDeclaration) {
+					ast.functions.add(parsed);
+				} else if (parsed instanceof GlobalVarDefinition) {
+					ast.globalVariables.add(parsed);
+				} else {
+					throw new RuntimeException("Something went wrong!");
+				}
 				break;
+			}
+			case SEMICOLON: {
+				advance(); // skip semicolons
 			}
 			default:
 				throw new IllegalArgumentException("Unexpected value: " + peek().type);
@@ -188,8 +203,8 @@ public class AbstractSyntaxTree {
 	}
 	
 	/**
-	 * Parse a function declaration
-	 * Example:
+	 * Parse a function declaration AND global variables
+	 * Example 1:
 	 * void function() {
 	 *     call();
 	 *     if (thing) {
@@ -197,9 +212,12 @@ public class AbstractSyntaxTree {
 	 *     };
 	 * }
 	 * 
+	 * Example 2:
+	 * uint shit = 10;
+	 * 
 	 * @return a function object
 	 */
-	public FunctionDeclaration parseFunctionDeclaration() {
+	public GlobalDefinitionNode parseGlobalDeclaration() {
 		// pretty much the same as declaring variables
 		Token typeToken = advance();
 		
@@ -229,6 +247,43 @@ public class AbstractSyntaxTree {
 		// the name of the function
 		Token ahead = consume(TokenType.IDENTIFIER, "Expected name");
 		
+		// parse function
+		if (check(TokenType.LPAREN)) {
+			return parseFunctionDeclaration(type, ptrLevel, ahead);
+		}
+		
+		// if the user defines "void thingy;" error.
+		if (type == null) {
+			throw new RuntimeException("Void cannot be a type!");
+		}
+		
+		// parse global variable definition
+		GlobalVarDefinition global = new GlobalVarDefinition(
+			// classic declaration statement, wrapped in global
+			new DeclarationStatement(
+				type, ptrLevel, 
+				new IdentifierNode(ahead.lexeme), null // no initial value for now
+			)
+		);
+		
+		// if followed by '=', parse the expression that comes after it
+		if (peek().type == TokenType.EQ) {
+			advance(); // consume the '=' token
+			global.statement.initialValue = parseExpression(); // parse the expr that comes after =
+		} else if (peek().type == TokenType.LSQUARE) {
+			advance(); // consume the opening bracket
+			global.statement.isArray = true;
+			global.statement.arraySize = parseExpression();
+			consume(TokenType.RSQUARE, "Expected ']' after array declaration");
+		}
+		
+		// expected a ';'
+		consume(TokenType.SEMICOLON, "Expected ;");
+		
+		return global;
+	}
+	
+	public FunctionDeclaration parseFunctionDeclaration(DeclaredType type, int ptrLevel, Token ahead) {
 		// parse parameters "(void* param1, uint param2...)"
 		consume(TokenType.LPAREN, "Expected '(' after function name declaration");
 		List<FunctionParam> params = new ArrayList<>();
@@ -803,6 +858,8 @@ public class AbstractSyntaxTree {
 	private ExpressionNode parsePrimary() {
 		Token token = advance();
 		switch (token.type) {
+		case LITERAL_CHAR:
+			return new CharacterNode(token.lexeme.charAt(1));
 		case NUMBER:
 			return new NumberNode(Integer.parseInt(token.lexeme));
 		case IDENTIFIER:

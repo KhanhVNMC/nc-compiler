@@ -120,6 +120,12 @@ public class CompileLexer {
 		case ']':
 			addToken(TokenType.RSQUARE);
 			break;
+		case '\'':
+			charLiteral();
+			break;
+		case '"':
+			stringLiteral();
+			break;
 		default:
 			// if the number is digit, hand over the control to number();
 			if (isDigit(c)) {
@@ -154,6 +160,30 @@ public class CompileLexer {
 			advance();	
 		}
 		addToken(TokenType.NUMBER);
+	}
+	
+	private void charLiteral() {
+		if (isAtEnd()) throw new RuntimeException("Unterminated character literal");
+		char c = advance();
+		// Handle escape characters like '\n' or '\''
+		if (c == '\\') {
+			if (isAtEnd()) throw new RuntimeException("Unterminated escape in character literal");
+			advance(); // skip the escaped char
+		}
+		if (peek() != '\'') throw new RuntimeException("Unterminated character literal or too many characters");
+		advance(); // consume closing '
+		addToken(TokenType.LITERAL_CHAR);
+	}
+	
+	private void stringLiteral() {
+		while (!isAtEnd() && peek() != '"') {
+			if (peek() == '\n') line++; // allow multi-line strings if desired
+			if (peek() == '\\') advance(); // skip escape prefix
+			advance();
+		}
+		if (isAtEnd()) throw new RuntimeException("Unterminated string literal");
+		advance(); // consume closing quote
+		addToken(TokenType.STRING);
 	}
 
 	// Utility functions
