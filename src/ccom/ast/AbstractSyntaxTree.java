@@ -13,6 +13,7 @@ import ccom.ast.Expressions.IdentifiableExpression;
 import ccom.ast.Expressions.IdentifierNode;
 import ccom.ast.Expressions.MemberOf;
 import ccom.ast.Expressions.NumberNode;
+import ccom.ast.Expressions.StringLiteralNode;
 import ccom.ast.Expressions.SubscriptNode;
 import ccom.ast.Expressions.UnaryArithmeticNode;
 import ccom.ast.Expressions.UnaryOpNode;
@@ -29,10 +30,12 @@ import ccom.ast.Statements.DeclaredType;
 import ccom.ast.Statements.ForStatement;
 import ccom.ast.Statements.FuncReturnStatement;
 import ccom.ast.Statements.ConditionBlock;
+import ccom.ast.Statements.ArrayLiteral;
 import ccom.ast.Statements.AssignmentStatment;
 import ccom.ast.Statements.ScopedStatements;
 import ccom.ast.Statements.StatementNode;
 import ccom.ast.Statements.StatementedExpression;
+import ccom.ast.Statements.StructLiteral;
 import ccom.ast.Statements.WhileLoopBlock;
 
 public class AbstractSyntaxTree {
@@ -131,13 +134,13 @@ public class AbstractSyntaxTree {
 		}
 		throw new RuntimeException(message);
 	}
-	
+
+	ProgramAST ast = new ProgramAST();
 	/**
 	 * Turn the given tokens into a full AST
 	 * @return the AST representing this Ngu-C program
 	 */
 	public ProgramAST parse() {
-		ProgramAST ast = new ProgramAST();
 		while (!isAtEnd() && !matchOneOf(TokenType.EOF)) {
 			// parse struct
 			switch (peek().type) {
@@ -270,8 +273,15 @@ public class AbstractSyntaxTree {
 			)
 		);
 		
+		// if the struct is like this "Type name{}", its a struct initializer
+		// so peek() must return {
+		if (peek().type == TokenType.LBRACE) {
+			advance(); // consume the '{' token
+			// parse struct initializer
+			parseStructInitializer(global.statement);
+		}
 		// if followed by '=', parse the expression that comes after it
-		if (peek().type == TokenType.EQ) {
+		else if (peek().type == TokenType.EQ) {
 			advance(); // consume the '=' token
 			global.statement.initialValue = parseExpression(); // parse the expr that comes after =
 		} else if (peek().type == TokenType.LSQUARE) {
@@ -447,8 +457,15 @@ public class AbstractSyntaxTree {
 			type, ptrLevel, new IdentifierNode(identifier.lexeme), null
 		);
 		
+		// if the struct is like this "Type name{}", its a struct initializer
+		// so peek() must return {
+		if (peek().type == TokenType.LBRACE) {
+			advance(); // consume the '{' token
+			// parse decs like: Person p{10};
+			parseStructInitializer(statement);
+		}
 		// if there is a =, its a declaration w/ assignment
-		if (peek().type == TokenType.EQ) {
+		else if (peek().type == TokenType.EQ) {
 			advance(); // consume the '=' token
 			statement.initialValue = parseExpression(); // assigned value
 		} else if (peek().type == TokenType.LSQUARE) {
@@ -503,7 +520,32 @@ public class AbstractSyntaxTree {
 			}
 			consume(TokenType.RBRACE, "Expected '}' after array initialization");
 		}
-		statement.definedArray = declaredArray;
+		statement.initialValue = new ArrayLiteral(declaredArray);
+	}
+	
+	/**
+	 * Parses a struct initializer list and sets it as the initial value of the given declaration statement.
+	 * This function will start to parse when the pointer is
+	 * on the '{' token
+	 * 
+	 * Person p{ 25, 180, 75 };
+	 *         ^ here
+	 *        
+	 * @param statement the initial statement
+	*/
+	public void parseStructInitializer(DeclarationStatement statement) {
+		// the struct initializer members
+		List<ExpressionNode> struct = new ArrayList<>();
+		if (peek().type != TokenType.RBRACE) {
+			do {
+				// parse each expression inside the struct initializer list
+				struct.add( parseExpression() );
+			} while (matchOneOf(TokenType.COMMA)); // seperated by ","
+		}
+		consume(TokenType.RBRACE, "Expected '}' after struct literal initialization");
+		statement.initialValue = new StructLiteral(
+			statement.type, struct
+		);
 	}
 	
 	/**
@@ -992,6 +1034,8 @@ public class AbstractSyntaxTree {
 		case TRUE:
 		case FALSE:
 			return new NumberNode(token.type == TokenType.TRUE ? 1 : 0);
+		case STRING:
+			return new StringLiteralNode(token.lexeme.substring(1, token.lexeme.length() - 1));
 		default:
 			throw new RuntimeException(token + ". Expected expression");
 		}

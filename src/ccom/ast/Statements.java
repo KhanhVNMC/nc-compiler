@@ -123,9 +123,6 @@ public class Statements {
 		boolean isArray = false;
 		ExpressionNode arraySize; // new field (for type thing[num])
 		
-		// for declares like this: type thing[] = {};
-		List<ExpressionNode> definedArray = null; 
-
 		/**
 		 * Constructor for scalar (non-array) variable declarations.
 		 */
@@ -150,14 +147,41 @@ public class Statements {
 		
 		@Override
 		public String toString() {
-			if (isArray && definedArray == null) {
-				return "DeclareArr(" + type + ", " + pointerLevel + ", " + identifier + "[" + arraySize + "])";
-			} else if (definedArray != null) {
-				return "DefinedArr(" + type + ", " + pointerLevel + ", " + identifier + " {" + definedArray + "})";
+			if (isArray && initialValue == null) {
+				return "DeclareEmptyArr(" + type + ", " + pointerLevel + ", " + identifier + "[" + arraySize + "])";
 			}
 			return "DeclareVar(" + type + ", " + pointerLevel + ", " + identifier + ", " + initialValue + ")";
 		}
 	}
+	
+	public static class ArrayLiteral extends ExpressionNode {
+	    List<ExpressionNode> values;
+
+	    public ArrayLiteral(List<ExpressionNode> values) {
+	        this.values = values;
+	    }
+
+	    @Override
+	    public String toString() {
+	        return "ArrayLiteral(" + values + ")";
+	    }
+	}
+	
+	public static class StructLiteral extends ExpressionNode {
+	    DeclaredType structName;
+	    List<ExpressionNode> fieldValues;
+
+	    public StructLiteral(DeclaredType structName, List<ExpressionNode> fieldValues) {
+	        this.structName = structName;
+	        this.fieldValues = fieldValues;
+	    }
+
+	    @Override
+	    public String toString() {
+	        return "StructLiteral(" + structName + " {" + fieldValues + "})";
+	    }
+	}
+
 	
 	public static class DeclaredType {
 		TokenType primitiveType = null;
