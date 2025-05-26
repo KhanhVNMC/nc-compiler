@@ -11,5 +11,13 @@ uint main() {
     testWithInit.field1 = 69;
     test.field3 = 's';
 
+    while (testWithInit.field1 > 0) {
+        testWithInit.field1--;
+    };
+    
+    for (;;) {
+        break;
+    };
+
     return 0;
 }

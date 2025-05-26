@@ -39,6 +39,30 @@ public class Statements {
 			return "ReturnFunc(" + returnValue + ")";
 		}
 	}
+	
+	/**
+     * Represents a break statement in a loop.
+     */
+	public static class LoopBreakStatement extends StatementNode {
+		public LoopBreakStatement() {}
+		
+		@Override
+		public String toString() {
+			return "LoopBreak()";
+		}
+	}
+	
+	/**
+     * Represents a continue statement in a loop.
+     */
+	public static class LoopContinueStatement extends StatementNode {
+		public LoopContinueStatement() {}
+		
+		@Override
+		public String toString() {
+			return "LoopContinue()";
+		}
+	}
 
     /**
      * Represents a block of statements enclosed in a scope.

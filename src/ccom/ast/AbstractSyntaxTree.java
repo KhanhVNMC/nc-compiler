@@ -29,6 +29,8 @@ import ccom.ast.Statements.DeclarationStatement;
 import ccom.ast.Statements.DeclaredType;
 import ccom.ast.Statements.ForStatement;
 import ccom.ast.Statements.FuncReturnStatement;
+import ccom.ast.Statements.LoopBreakStatement;
+import ccom.ast.Statements.LoopContinueStatement;
 import ccom.ast.Statements.ConditionBlock;
 import ccom.ast.Statements.ArrayLiteral;
 import ccom.ast.Statements.AssignmentStatment;
@@ -667,6 +669,14 @@ public class AbstractSyntaxTree {
 				// this is super simple, just parse the expression that
 				// comes after return [expression];
 				return new FuncReturnStatement(parseExpression());
+			}
+			
+			// loop break, continue
+			case BREAK: {
+				return new LoopBreakStatement();
+			}
+			case CONTINUE: {
+				return new LoopContinueStatement();
 			}
 			
 			// count de-reference pointer(s), like **a = thing;

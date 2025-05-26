@@ -295,6 +295,8 @@ public class CompileLexer {
 	        case "void": return TokenType.VOID;
 	        case "true": return TokenType.TRUE;
 	        case "false": return TokenType.FALSE;
+	        case "continue": return TokenType.CONTINUE;
+	        case "break": return TokenType.BREAK;
 	        default: return TokenType.IDENTIFIER;
 	    }
 	}
