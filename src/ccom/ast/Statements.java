@@ -1,6 +1,5 @@
 package ccom.ast;
 
-import java.lang.classfile.AnnotationValue.OfAnnotation;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -219,9 +218,13 @@ public class Statements {
 			this.typedefType = type.lexeme;
 		}
 		
+		public boolean isPrimitive() {
+			return typedefType == null;
+		}
+		
 		@Override
 		public String toString() {
-			if (typedefType == null) {
+			if (isPrimitive()) {
 				return "Primitive(" + primitiveType + ")";
 			} else return "Typedef(" + typedefType + ")";
 		}

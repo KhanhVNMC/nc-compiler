@@ -11,6 +11,8 @@ uint main() {
     testWithInit.field1 = 69;
     test.field3 = 's';
 
+    TestStruct structure{1, 2, 's'};
+
     while (testWithInit.field1 > 0) {
         testWithInit.field1--;
     };

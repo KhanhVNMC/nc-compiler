@@ -4,48 +4,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ccom.CompileLexer;
-import ccom.CompileToken.Token;
-import ccom.CompileToken.TokenType;
-import ccom.ast.Expressions.BinaryOpNode;
-import ccom.ast.Expressions.ExpressionNode;
-import ccom.ast.Expressions.Identifiable;
-import ccom.ast.Expressions.IdentifiableExpression;
-import ccom.ast.Expressions.IdentifierNode;
-import ccom.ast.Expressions.MemberOf;
-import ccom.ast.Expressions.NumberNode;
-import ccom.ast.Expressions.StringLiteralNode;
-import ccom.ast.Expressions.SubscriptNode;
-import ccom.ast.Expressions.UnaryArithmeticNode;
-import ccom.ast.Expressions.UnaryOpNode;
-import ccom.ast.GlobalDefinitions.FunctionDeclaration;
-import ccom.ast.GlobalDefinitions.FunctionParam;
-import ccom.ast.GlobalDefinitions.GlobalDefinitionNode;
-import ccom.ast.GlobalDefinitions.ProgramAST;
-import ccom.ast.GlobalDefinitions.StructDefinition;
-import ccom.ast.GlobalDefinitions.GlobalVarDefinition;
-import ccom.ast.Expressions.CallNode;
-import ccom.ast.Expressions.CharacterNode;
-import ccom.ast.Statements.DeclarationStatement;
-import ccom.ast.Statements.DeclaredType;
-import ccom.ast.Statements.ForStatement;
-import ccom.ast.Statements.FuncReturnStatement;
-import ccom.ast.Statements.LoopBreakStatement;
-import ccom.ast.Statements.LoopContinueStatement;
-import ccom.ast.Statements.ConditionBlock;
-import ccom.ast.Statements.ArrayLiteral;
-import ccom.ast.Statements.AssignmentStatment;
-import ccom.ast.Statements.ScopedStatements;
-import ccom.ast.Statements.StatementNode;
-import ccom.ast.Statements.StatementedExpression;
-import ccom.ast.Statements.StructLiteral;
-import ccom.ast.Statements.WhileLoopBlock;
+import ccom.CompileToken.*;
+import ccom.ast.GlobalDefinitions.*;
+import ccom.ast.Expressions.*;
+import ccom.ast.Statements.*;
 
+/**
+ * 
+ */
 public class AbstractSyntaxTree {
 	public List<Token> tokens;
 	
 	// token pointer
 	int current;
-
+	
 	public AbstractSyntaxTree(CompileLexer lexer) {
 		this.tokens = lexer.scanTokens();
 	}
@@ -91,7 +63,8 @@ public class AbstractSyntaxTree {
 	}
 	
 	/**
-	 *
+	 * Look ahead from the current pointer to see if 
+	 * they match the expected sequence
 	 */
 	public boolean lookAheadIfMatch(TokenType... types) {
 		int look = current; 
@@ -151,6 +124,8 @@ public class AbstractSyntaxTree {
 				break;
 			}
 			// for function and global var declarations
+			// they share the same format of
+			// [TYPE/IDENTIFIER][IDENTIFIER]{(FOR FUNC) / ; OR = FOR DEC}
 			case IDENTIFIER:
 			case VOID:
 			case CHAR:
@@ -302,7 +277,7 @@ public class AbstractSyntaxTree {
 		}
 		
 		// expected a ';'
-		consume(TokenType.SEMICOLON, "Expected ;");
+		consume(TokenType.SEMICOLON, "Expected ';' after declaration statement");
 		
 		return global;
 	}
@@ -342,15 +317,17 @@ public class AbstractSyntaxTree {
 	
 	/**
 	 * Recursively parses subscript expressions of the form identifier[index],
-	 * supporting chained subscripts like array[0][1]. Converts them into nested
-	 * SubscriptNode instances.
+	 * supporting chained subscripts like array[0][1]. 
+	 * Converts them into nested SubscriptNode instances.
 	 *
 	 * @param expr The base identifiable expression
 	 * @return An Identifiable representing the entire subscript chain
 	 */
 	private Identifiable parseSubscriptNodes(Identifiable expr) {
 		Identifiable base = expr; // base node
-		if (peek().type != TokenType.LSQUARE) return base;
+		if (peek().type != TokenType.LSQUARE) {
+			return base;
+		}
 		consume(TokenType.LSQUARE, "Expected '['");
 		// parse the expression inside the brackets
 		base = new SubscriptNode(base, parseExpression());
@@ -414,7 +391,7 @@ public class AbstractSyntaxTree {
 			// parse each NORMAL statement, line by line
 			body.statements.add(parseStatement(0));
 			// end of statement (must end with a semicolon)
-			consume(TokenType.SEMICOLON, "Expected ;");
+			consume(TokenType.SEMICOLON, "Expected ';' after a statement");
 		}
 		return body;
 	}
@@ -536,6 +513,14 @@ public class AbstractSyntaxTree {
 	 * @param statement the initial statement
 	*/
 	public void parseStructInitializer(DeclarationStatement statement) {
+		if (statement.type.isPrimitive()) {
+			throw new RuntimeException("Struct initializer cannot be placed on primitive types!");
+		}
+		// no fucking allow typa shit like: Type* thing{};
+		if (statement.pointerLevel > 0) {
+			throw new RuntimeException("Struct initializer cannot be placed on pointers!");
+		}
+		
 		// the struct initializer members
 		List<ExpressionNode> struct = new ArrayList<>();
 		if (peek().type != TokenType.RBRACE) {
@@ -630,11 +615,11 @@ public class AbstractSyntaxTree {
 					initial = parseStatement(0);
 				}
 				// the same...
-				consume(TokenType.SEMICOLON, "Expected ; after initial");
+				consume(TokenType.SEMICOLON, "Expected ';' after initial");
 				if (peek().type != TokenType.SEMICOLON) {
 					condition = parseExpression();
 				}
-				consume(TokenType.SEMICOLON, "Expected ;");
+				consume(TokenType.SEMICOLON, "Expected ';' after condition");
 				// if the last token is a ')', it is the end of the statement
 				// skip the parsing
 				if (peek().type != TokenType.RPAREN) {
@@ -804,6 +789,19 @@ public class AbstractSyntaxTree {
 	
 	/**
 	 * Parse a function call
+	 * 
+	 * The pointer must be on the ')' token or the first token of the
+	 * argument(s). Like this:
+	 * 
+	 * thingy();
+	 *        ^ here
+	 *        
+	 * OR
+	 * 
+	 * thingy(var1, var2);
+	 *        ^ here
+	 * 
+	 * 
 	 * @param funcName the token containing the function name
 	 * @param ptrLevel the pointer level (for error throwing)
 	 * @return
@@ -1028,7 +1026,7 @@ public class AbstractSyntaxTree {
 		case MINUSMINUS: // for ++identifier
 			// look one token ahead of the identifier
 			Token after = peek();
-			if (after.type != TokenType.IDENTIFIER) throw new RuntimeException("dit me may bien dau");
+			if (after.type != TokenType.IDENTIFIER) throw new RuntimeException("Unary arithmetic expects identifier behind");
 			
 			// consume the identifier after ++ or --
 			Identifiable suffixIdentifier = parseIdentifier(advance());
@@ -1047,7 +1045,7 @@ public class AbstractSyntaxTree {
 		case STRING:
 			return new StringLiteralNode(token.lexeme.substring(1, token.lexeme.length() - 1));
 		default:
-			throw new RuntimeException(token + ". Expected expression");
+			throw new RuntimeException("Found unexpected token: " + token + ". Expected a valid expression");
 		}
 	}
 	// EXPRESSION PARSING ENDS
