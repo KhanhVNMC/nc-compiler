@@ -142,6 +142,7 @@ public class AbstractSyntaxTree {
 			}
 			case SEMICOLON: {
 				advance(); // skip semicolons
+				break;
 			}
 			default:
 				throw new IllegalArgumentException("Unexpected value: " + peek().type);
@@ -311,6 +312,7 @@ public class AbstractSyntaxTree {
 		return new FunctionDeclaration(
 			type, ptrLevel, new IdentifierNode(nameToken.lexeme), // type[*] name
 			params, // (params...)
+			matchOneOf(TokenType.SEMICOLON) ? null : // for forward declaration: void func();
 			parseScopedBody() // { body }
 		);
 	}
