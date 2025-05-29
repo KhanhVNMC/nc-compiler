@@ -52,8 +52,8 @@ public class Expressions {
 	}
 	
 	public static class SubscriptNode extends Identifiable {
-		ExpressionNode identifier;
-		ExpressionNode offset;
+		public ExpressionNode identifier;
+		public ExpressionNode offset;
 		
 		public SubscriptNode(ExpressionNode identifier, ExpressionNode offset) {
 			this.offset = offset;
@@ -140,8 +140,8 @@ public class Expressions {
 	}
 	
 	public static class CallNode extends ExpressionNode {
-		ExpressionNode callee;
-		List<ExpressionNode> arguments;
+		public ExpressionNode callee;
+		public List<ExpressionNode> arguments;
 		
 		public CallNode(ExpressionNode expr, List<ExpressionNode> node) {
 			this.callee = expr;

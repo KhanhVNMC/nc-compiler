@@ -27,7 +27,7 @@ public class Statements {
      * Represents a return statement in a function.
      */
 	public static class FuncReturnStatement extends StatementNode {
-		ExpressionNode returnValue;
+		public ExpressionNode returnValue;
 		
 		public FuncReturnStatement(ExpressionNode returnValue) {
 			this.returnValue = returnValue;
@@ -67,7 +67,7 @@ public class Statements {
      * Represents a block of statements enclosed in a scope.
      */
 	public static class ScopedStatements extends StatementNode {
-		List<StatementNode> statements = new ArrayList<>();
+		public List<StatementNode> statements = new ArrayList<>();
 		
 		@Override
 		public String toString() {
@@ -81,9 +81,9 @@ public class Statements {
      * Represents an if-else conditional block.
      */
 	public static class ConditionBlock extends StatementNode implements OptionalScopedStatement {
-		ExpressionNode condition;
-		StatementNode ifBody;
-		StatementNode elseBody;
+		public ExpressionNode condition;
+		public StatementNode ifBody;
+		public StatementNode elseBody;
 		
 		public ConditionBlock(ExpressionNode condition, StatementNode ifbody, StatementNode elsebody) {
 			this.condition = condition;
@@ -101,8 +101,8 @@ public class Statements {
      * Represents a while loop construct.
      */
 	public static class WhileLoopBlock extends StatementNode implements OptionalScopedStatement {
-		ExpressionNode condition;
-		StatementNode whileBody;
+		public ExpressionNode condition;
+		public StatementNode whileBody;
 		
 		public WhileLoopBlock(ExpressionNode condition, StatementNode whileBody) {
 			this.condition = condition;
@@ -119,10 +119,10 @@ public class Statements {
      * Represents a for loop.
      */
 	public static class ForStatement extends StatementNode implements OptionalScopedStatement {
-		StatementNode initializer;
-		ExpressionNode condition;
-		StatementNode iteration;
-		StatementNode loopBody;
+		public StatementNode initializer;
+		public ExpressionNode condition;
+		public StatementNode iteration;
+		public StatementNode loopBody;
 		
 		public ForStatement(StatementNode initializer, ExpressionNode condition, StatementNode iter, StatementNode loopBody) {
 			this.initializer = initializer;
@@ -138,13 +138,13 @@ public class Statements {
 	}
 	
 	public static class DeclarationStatement extends StatementNode {
-		DeclaredType type;
-		int pointerLevel;
-		Identifiable identifier;
-		ExpressionNode initialValue;
+		public DeclaredType type;
+		public int pointerLevel;
+		public Identifiable identifier;
+		public ExpressionNode initialValue;
 		
-		boolean isArray = false;
-		ExpressionNode arraySize; // new field (for type thing[num])
+		public boolean isArray = false;
+		public ExpressionNode arraySize; // new field (for type thing[num])
 		
 		/**
 		 * Constructor for scalar (non-array) variable declarations.
@@ -178,7 +178,7 @@ public class Statements {
 	}
 	
 	public static class ArrayLiteral extends ExpressionNode {
-	    List<ExpressionNode> values;
+		public List<ExpressionNode> values;
 
 	    public ArrayLiteral(List<ExpressionNode> values) {
 	        this.values = values;
@@ -191,8 +191,8 @@ public class Statements {
 	}
 	
 	public static class StructLiteral extends ExpressionNode {
-	    DeclaredType structName;
-	    List<ExpressionNode> fieldValues;
+		public DeclaredType structName;
+		public List<ExpressionNode> fieldValues;
 
 	    public StructLiteral(DeclaredType structName, List<ExpressionNode> fieldValues) {
 	        this.structName = structName;
@@ -207,8 +207,8 @@ public class Statements {
 
 	
 	public static class DeclaredType {
-		TokenType primitiveType = null;
-		String typedefType = null;
+		public TokenType primitiveType = null;
+		public String typedefType = null;
 		
 		public DeclaredType(TokenType primitive) {
 			this.primitiveType = primitive;
@@ -231,10 +231,10 @@ public class Statements {
 	}
 	
 	public static class AssignmentStatment extends StatementNode {
-		Identifiable identifier;
-		ExpressionNode value;
-		TokenType operator;
-		int pointerLevel;
+		public Identifiable identifier;
+		public ExpressionNode value;
+		public TokenType operator;
+		public int pointerLevel;
 		
 		public AssignmentStatment(Identifiable identifier, int pointerLevel, TokenType operator, ExpressionNode value) {
 			this.identifier = identifier;
@@ -250,7 +250,7 @@ public class Statements {
 	}
 	
 	public static class StatementedExpression extends StatementNode {
-		ExpressionNode expression;
+		public ExpressionNode expression;
 		
 		public StatementedExpression(ExpressionNode expressionNode) {
 			this.expression = expressionNode;

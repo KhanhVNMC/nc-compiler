@@ -16,9 +16,9 @@ public class GlobalDefinitions {
     public static abstract class GlobalDefinitionNode extends ASTNode {}
     
     public static class ProgramAST {
-    	List<GlobalDefinitionNode> globalVariables = new ArrayList<>();
-    	List<GlobalDefinitionNode> structs = new ArrayList<>();
-    	List<GlobalDefinitionNode> functions = new ArrayList<>();
+    	public List<GlobalDefinitionNode> globalVariables = new ArrayList<>();
+    	public List<GlobalDefinitionNode> structs = new ArrayList<>();
+    	public List<GlobalDefinitionNode> functions = new ArrayList<>();
     
     	public ProgramAST() {}
     	
@@ -29,7 +29,7 @@ public class GlobalDefinitions {
     }
     
     public static class GlobalVarDefinition extends GlobalDefinitionNode {
-    	DeclarationStatement statement;
+    	public DeclarationStatement statement;
     	
     	public GlobalVarDefinition(DeclarationStatement statement) {
     		this.statement = statement;
@@ -63,11 +63,11 @@ public class GlobalDefinitions {
      * Represents a function declaration.
      */
 	public static class FunctionDeclaration extends GlobalDefinitionNode {
-		DeclaredType returnType; // null == void
-		int returnPtrLevel = 0; // the return ptr level (Eg. void**)
-		Identifiable identifier; // the func name
-		List<FunctionParam> parameters; 
-		ScopedStatements body;
+		public DeclaredType returnType; // null == void
+		public int returnPtrLevel = 0; // the return ptr level (Eg. void**)
+		public Identifiable identifier; // the func name
+		public List<FunctionParam> parameters; 
+		public ScopedStatements body;
 		
 		public FunctionDeclaration(DeclaredType type, int ptrLevel, Identifiable name, List<FunctionParam> params, ScopedStatements body) {
 			this.returnType = type;
@@ -87,9 +87,9 @@ public class GlobalDefinitions {
      * Represents a function parameter.
      */
 	public static class FunctionParam {
-		DeclaredType type;
-		int ptrLevel = 0;
-		Identifiable paramName;
+		public DeclaredType type;
+		public int ptrLevel = 0;
+		public Identifiable paramName;
 		
 		public FunctionParam(DeclaredType type, int ptrLevel, Identifiable name) {
 			this.type = type;
