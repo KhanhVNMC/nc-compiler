@@ -3,9 +3,12 @@ package ccom.backend.codegen;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import ccom.CompileLexer;
 import ccom.ast.AbstractSyntaxTree;
+import ccom.ast.Expressions.BinaryOpNode;
 import ccom.ast.Expressions.ExpressionNode;
 import ccom.ast.GlobalDefinitions.FunctionDeclaration;
 import ccom.ast.GlobalDefinitions.ProgramAST;
@@ -16,7 +19,6 @@ public class TestOrder {
 	public static void main(String[] args) throws IOException {
 		var cc = Files.readString(Path.of("testc/s.c"));
 		CompileLexer lex = new CompileLexer(cc);
-		System.out.println(lex.scanTokens().size());
 		//lex.scanTokens().forEach(tok -> System.out.println(tok));
 		AbstractSyntaxTree syntaxTree = new AbstractSyntaxTree(lex);
 		
@@ -24,7 +26,11 @@ public class TestOrder {
 		StatementNode node = ((FunctionDeclaration)tree.functions.get(0)).body.statements.get(0);
 		
 		ExpressionNode initialValue = ((DeclarationStatement) node).initialValue;
-		System.out.println(initialValue);
+		List<String> strings = new ArrayList<String>();
+		
+		((BinaryOpNode) initialValue).emitAsm(strings, initialValue);
+			
+		strings.forEach(s -> System.out.println(s));
 	
 	}
 }
