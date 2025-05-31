@@ -62,6 +62,9 @@ public class CompileLexer {
 		case '/':
 			addToken(TokenType.SLASH);
 			break;
+		case '%':
+			addToken(TokenType.MOD);
+			break;
 		case '=':
 			// if the next token after = is "=" too, then EQEQ
 			addToken(match('=') ? TokenType.EQEQ : TokenType.EQ);

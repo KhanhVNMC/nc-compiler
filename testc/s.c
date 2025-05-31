@@ -1,4 +1,11 @@
-uint main() {
-    uint sex = 0xCAFE >> 8;
-    return 0;
+struct s {
+    uint d;
+};
+
+uint d() {
+    if (1 == 1) {
+        func();
+    } else {
+        sex();
+    };
 }

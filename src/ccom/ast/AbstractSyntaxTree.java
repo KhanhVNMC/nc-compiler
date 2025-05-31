@@ -762,6 +762,7 @@ public class AbstractSyntaxTree {
 					case BSL:
 					case XOR:
 					case OR:
+					case MOD:
 					case SLASH: {
 						// if the thing does not end with a = (* / + - or ...)
 						if (ahead.type != TokenType.EQ) {
@@ -930,8 +931,8 @@ public class AbstractSyntaxTree {
 		// parse either number or identifier
 		ExpressionNode exp = parseUnary();
 		while (true) {
-			// if the next token (operator) is not * or /, return the parsed expr
-			if (!matchOneOf(TokenType.STAR, TokenType.SLASH)) {
+			// if the next token (operator) is not * or /, %, return the parsed expr
+			if (!matchOneOf(TokenType.STAR, TokenType.SLASH, TokenType.MOD)) {
 				break;
 			}
 			Token operator = previous(); // same thing

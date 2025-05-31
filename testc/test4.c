@@ -8,7 +8,7 @@ uint addPoints(Point a, Point b) {
 }
 
 uint main() {
-    Point p1 {};
-    Point p2 {};
+    Point p1{};
+    Point p2{};
     return addPoints(p1, p2);
 }

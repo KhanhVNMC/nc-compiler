@@ -205,6 +205,10 @@ public class Expressions {
 					instructions.add("shl r0, r1");
 					break;
 				}
+				case MOD: {
+					instructions.add("mod r0, r1");
+					break;
+				}
 			default:
 				break;
 			}

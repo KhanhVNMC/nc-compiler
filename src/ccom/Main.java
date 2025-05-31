@@ -9,7 +9,7 @@ import ccom.ast.AbstractSyntaxTree;
 public class Main {
 
 	public static void main(String[] args) throws IOException {
-		var cc = Files.readString(Path.of("testc/s.c")).replace("CXX_COMPILER", "100");
+		var cc = Files.readString(Path.of("testc/test6.c")).replace("CXX_COMPILER", "100");
 		CompileLexer lex = new CompileLexer(cc);
 		System.out.println(lex.scanTokens().size());
 		//lex.scanTokens().forEach(tok -> System.out.println(tok));

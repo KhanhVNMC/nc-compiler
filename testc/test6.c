@@ -14,12 +14,13 @@ uint main() {
     TestStruct structure{1, 2, 's'};
 
     while (testWithInit.field1 > 0) {
+        int x = 10;
         testWithInit.field1--;
     };
     
-    for (;;) {
-        break;
-    };
+    {
+        int y = 10;
+    }
 
     return 0;
 }
