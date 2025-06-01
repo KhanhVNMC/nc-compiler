@@ -1,16 +1,15 @@
 package ccom.backend.codegen;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
 public class SymbolTable {
 	private Stack<Map<String, Symbol>> scopeStack = new Stack<>();
-
-	private int rspOffset = 1;
+	
+	private int rspOffsetLocalVar = 1;
+	private int rspOffsetParam = 3;
 
 	public void enterScope() {
 		scopeStack.push(new HashMap<>());
@@ -18,25 +17,35 @@ public class SymbolTable {
 
 	public void exitScope() {
 		scopeStack.pop().forEach((_, symbol) -> {
-			if (!symbol.isParam)
-				rspOffset -= symbol.sizeof();
+			if (!symbol.isParam) {
+				rspOffsetLocalVar -= symbol.sizeof();
+			}
 		});
+	}
+	
+	public int paramSize() {
+		return this.rspOffsetParam - 3;
 	}
 
 	public void declareSymbol(Symbol symbol) {
 		if (symbol.isParam) {
-			symbol.offset = 1 + 2 + 2 * currentParamCount();
+			symbol.offset = rspOffsetParam;
+			rspOffsetParam += symbol.sizeof();
 		} else {
-			symbol.offset = rspOffset;
-			rspOffset += symbol.sizeof(); // next
+			symbol.offset = rspOffsetLocalVar;
+			rspOffsetLocalVar += symbol.sizeof(); // next
 		}
 		scopeStack.peek().put(symbol.identifier, symbol);
 	}
-
-	private int currentParamCount() {
+	
+	public int currentParamCount() {
 		return (int) scopeStack.peek().values().stream().filter(s -> s.isParam).count();
 	}
-
+	
+	public Symbol resolve(String name) {
+		
+	}
+	
 	public void debugPrint() {
 		System.out.println("=== Symbol Table ===");
 		int scopeLevel = scopeStack.size();
@@ -50,50 +59,16 @@ public class SymbolTable {
 		System.out.println("====================");
 	}
 
-	public static class Struct extends Symbol {
-		private final Map<String, Symbol> members = new LinkedHashMap<>();
-
-		public Struct(String name, boolean isParam) {
-			super(name);
-			this.isParam = isParam;
-		}
-
-		public void addMember(Symbol member) {
-			member.offset = this.offset + this.size; // offset within the struct
-			members.put(member.identifier, member);
-			this.size += member.sizeof(); // total size of the struct
-		}
-
-		public Symbol getMember(String name) {
-			return members.get(name);
-		}
-
-		public Collection<Symbol> getMembers() {
-			return members.values();
-		}
-
-		@Override
-		public String toString() {
-			StringBuilder sb = new StringBuilder(identifier + "(struct, size:" + size + ") {\n");
-			for (Symbol member : members.values()) {
-				sb.append("    ").append(member.identifier).append("(size:").append(member.size).append(", offset:")
-						.append(member.offset).append(")\n");
-			}
-			sb.append("}");
-			return sb.toString();
-		}
-	}
-
 	public static class Symbol {
 		public int size;
 		public int offset;
 		public boolean isParam;
 		public String identifier;
 
-		public Symbol(String name) {
+		public Symbol(String name, int size, boolean isParam) {
 			this.identifier = name;
-			this.size = 2;
-			this.isParam = true;
+			this.size = size;
+			this.isParam = isParam;
 		}
 
 		public Symbol(String name, int size) {

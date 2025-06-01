@@ -14,7 +14,7 @@ import ccom.ast.GlobalDefinitions.FunctionDeclaration;
 import ccom.ast.GlobalDefinitions.ProgramAST;
 import ccom.ast.Statements.DeclarationStatement;
 import ccom.ast.Statements.StatementNode;
-import ccom.backend.codegen.SymbolTable.Struct;
+import ccom.backend.codegen.StructTable.*;
 import ccom.backend.codegen.SymbolTable.Symbol;
 
 public class TestOrder {
