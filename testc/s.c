@@ -1,11 +1,21 @@
-struct s {
-    uint d;
+struct SizeOf {
+    char c;
 };
 
-uint d() {
-    if (1 == 1) {
-        func();
-    } else {
-        sex();
-    };
-}
+struct Rotation {
+    SizeOf size;
+    uint rot;
+};
+
+struct Point {
+    uint x;
+    Rotation rot;
+    uint y;
+};
+
+struct Player {
+    Point p[20];
+    uint hp[100];
+    Point sp;
+    void* s;
+};

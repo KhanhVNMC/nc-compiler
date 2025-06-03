@@ -1,7 +1,6 @@
 package ccom.backend.codegen;
 
 import java.util.*;
-
 import ccom.backend.codegen.SymbolTable.Symbol;
 
 /**
@@ -152,11 +151,13 @@ public class StructTable {
 		 * Prints the layout of this struct to standard output, showing all fields and
 		 * their flattened offsets.
 		 */
-		public void printLayout() {
-			System.out.println("Struct " + structName + " Layout:");
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder("struct " + structName + " {\n");
 			for (Map.Entry<String, Integer> entry : flatOffsets.entrySet()) {
-				System.out.printf("  %s ; offset = %d%n", entry.getKey(), entry.getValue());
+				builder.append(String.format("  %s ; offset = %d%n", entry.getKey(), entry.getValue()));
 			}
+			return builder.append("}").toString();
 		}
 	}
 
@@ -164,25 +165,15 @@ public class StructTable {
 	 * Example usage and test of the StructTable system.
 	 */
 	public static void main(String[] args) {
-		StructLayout nest = new StructLayout("Nest", 
-			new StructField("shit", 100),
-			new StructField("abs", CHAR)
-		);
-		StructLayout s = new StructLayout("Test", 
-			new StructField("x", 2),
-			new StructField("c", 1),
-			new StructField("nest", nest)
-		);
+		SymbolTable table = new SymbolTable();
+		table.enterScope(UINT * 10);
 		
-		SymbolTable sym = new SymbolTable();
-		sym.enterScope();
-		sym.declareSymbol(new Symbol("teststruct", 2, false));
-		sym.declareSymbol(new Symbol("test", 2, false));
-		sym.debugPrint();
+		table.declareSymbol(new Symbol("arg1", CHAR));
+		table.enterScope();
+		table.declareSymbol(new Symbol("param1", UINT, false));
+		table.declareSymbol(new Symbol("param2", UINT, false));
+		table.debugPrint();
 		
-		s.printLayout();
-		nest.printLayout();
-		
-		sym.exitScope();
+		table.exitScope();
 	}
 }

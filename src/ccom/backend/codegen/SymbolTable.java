@@ -14,6 +14,12 @@ public class SymbolTable {
 	public void enterScope() {
 		scopeStack.push(new HashMap<>());
 	}
+	
+	public int enterScope(int returnPtrSize) {
+		this.rspOffsetParam += returnPtrSize;
+		this.enterScope();
+		return this.rspOffsetParam - returnPtrSize;
+	}
 
 	public void exitScope() {
 		scopeStack.pop().forEach((_, symbol) -> {
@@ -43,7 +49,13 @@ public class SymbolTable {
 	}
 	
 	public Symbol resolve(String name) {
-		
+		for (int i = scopeStack.size() - 1; i >= 0; i--) {
+			var scope = scopeStack.get(i);
+			if (scope.containsKey(name)) {
+				return scope.get(name);
+			}
+		}
+		return null;
 	}
 	
 	public void debugPrint() {
