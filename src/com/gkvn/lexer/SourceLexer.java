@@ -1,35 +1,32 @@
-package ccom;
+package com.gkvn.lexer;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import ccom.CompileToken.Token;
-import ccom.CompileToken.TokenType;
-
-public class CompileLexer {
+public class SourceLexer {
 	private final String source;
-	private final List<Token> tokens = new ArrayList<>();
-	private int start = 0;
+	public final List<Token> tokens = new ArrayList<>();
+	
+	// bookkeeping
+	private int start = 0; // the beginning of a token
 	private int current = 0;
 	private int line = 1;
-
-	public CompileLexer(String source) {
+	
+	// assign a source for this lexer
+	public SourceLexer(String source) {
 		this.source = source;
 	}
-
-	public List<Token> scanTokens() {
+	
+	public void scanTokens() {
 		// loop until the thing has not ended, if not ended, assign the
 		// current char index to the current one, and then scan the token
 		while (!isAtEnd()) {
-			// assign
 			start = current;
-			// tokenize syntax shit
 			scanToken();
 		}
 		
 		// end of file
 		tokens.add(new Token(TokenType.EOF, "", line, current));
-		return tokens;
 	}
 
 	private void scanToken() {
@@ -50,6 +47,10 @@ public class CompileLexer {
 			addToken(TokenType.RBRACE);
 			break;
 		case '+':
+			if (match('=')) {
+				addToken(TokenType.ADDEQ);
+				break;
+			}
 			addToken(match('+') ? TokenType.PLUSPLUS : TokenType.PLUS);
 			break;
 		case '-':
@@ -57,12 +58,24 @@ public class CompileLexer {
 				addToken(TokenType.ARROW);
 				break;
 			}
+			if (match('=')) {
+				addToken(TokenType.SUBEQ);
+				break;
+			}
 			addToken(match('-') ? TokenType.MINUSMINUS : TokenType.MINUS);
 			break;
 		case '/':
+			if (match('=')) {
+				addToken(TokenType.DIVEQ);
+				break;
+			}
 			addToken(TokenType.SLASH);
 			break;
 		case '%':
+			if (match('=')) {
+				addToken(TokenType.MODEQ);
+				break;
+			}
 			addToken(TokenType.MOD);
 			break;
 		case '=':
@@ -70,12 +83,24 @@ public class CompileLexer {
 			addToken(match('=') ? TokenType.EQEQ : TokenType.EQ);
 			break;
 		case '*':
+			if (match('=')) {
+				addToken(TokenType.MULEQ);
+				break;
+			}
 			addToken(TokenType.STAR);
 			break;
 		case '|':
+			if (match('=')) {
+				addToken(TokenType.OREQ);
+				break;
+			}
 			addToken(match('|') ? TokenType.OROR : TokenType.OR);
 			break;
 		case '&':
+			if (match('=')) {
+				addToken(TokenType.ANDEQ);
+				break;
+			}
 			addToken(match('&') ? TokenType.ANDAND : TokenType.AMPERSAND);
 			break;
 		case '<':
@@ -93,6 +118,10 @@ public class CompileLexer {
 			addToken(match('>') ? TokenType.BSR : TokenType.GT);
 			break;
 		case '^':
+			if (match('=')) {
+				addToken(TokenType.XOREQ);
+				break;
+			}
 			addToken(TokenType.XOR);
 			break;
 		case ' ':
