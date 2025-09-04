@@ -89,6 +89,9 @@ public class SourceLexer {
 			}
 			addToken(TokenType.STAR);
 			break;
+		case '~':
+			addToken(TokenType.TILDE);
+			break;
 		case '|':
 			if (match('=')) {
 				addToken(TokenType.OREQ);

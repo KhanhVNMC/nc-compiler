@@ -16,6 +16,13 @@ public class TypeSpecifier {
 		this.definedType = type.lexeme;
 		this.primitiveType = null;
 	}
+	
+	public static TypeSpecifier from(Token t) {
+		if (t.type.isPrimitiveType()) {
+			return new TypeSpecifier(t.type);
+		}
+		return new TypeSpecifier(t);
+	}
 
 	public boolean isPrimitive() {
 		return definedType == null;

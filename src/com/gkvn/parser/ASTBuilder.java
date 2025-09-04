@@ -1,18 +1,14 @@
 package com.gkvn.parser;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.function.Function;
+import java.util.Map;
 import java.util.function.Supplier;
-
-import javax.management.openmbean.InvalidOpenTypeException;
-
-import org.w3c.dom.ls.LSException;
 
 import com.gkvn.lexer.SourceLexer;
 import com.gkvn.lexer.Token;
 import com.gkvn.lexer.TokenType;
-import com.gkvn.parser.ast.NodeCombiner;
 import com.gkvn.parser.ast.TypeSpecifier;
 import com.gkvn.parser.ast.definitions.FunctionDeclaration;
 import com.gkvn.parser.ast.definitions.GlobalDefinitionNode;
@@ -21,6 +17,7 @@ import com.gkvn.parser.ast.definitions.StructDefinition;
 import com.gkvn.parser.ast.expressions.ArrayLiteral;
 import com.gkvn.parser.ast.expressions.AssignmentNode;
 import com.gkvn.parser.ast.expressions.BinaryOpNode;
+import com.gkvn.parser.ast.expressions.CCastNode;
 import com.gkvn.parser.ast.expressions.CallNode;
 import com.gkvn.parser.ast.expressions.CharacterNode;
 import com.gkvn.parser.ast.expressions.ExpressionNode;
@@ -40,7 +37,6 @@ import com.gkvn.parser.ast.statements.ForStatement;
 import com.gkvn.parser.ast.statements.FuncReturnStatement;
 import com.gkvn.parser.ast.statements.LoopBreakStatement;
 import com.gkvn.parser.ast.statements.LoopContinueStatement;
-import com.gkvn.parser.ast.statements.OptionalScopedStatement;
 import com.gkvn.parser.ast.statements.ScopedStatements;
 import com.gkvn.parser.ast.statements.StatementNode;
 import com.gkvn.parser.ast.statements.WhileLoopBlock;
@@ -51,7 +47,18 @@ public class ASTBuilder {
 	// token pointer
 	private int currentToken = 0; // bookkeeping 101
 	
-	public AbstractSyntaxTree ast;
+	// keep track of defined structs for casting
+	private Map<String, StructDefinition> definedStructs = new HashMap<>();
+	private boolean isDefinedOrPrimitiveType(Token token) {
+		if (token.type == TokenType.IDENTIFIER) {
+			return definedStructs.containsKey(token.lexeme);
+		}
+		return token.type == TokenType.UINT 
+			|| token.type == TokenType.CHAR 
+			|| token.type == TokenType.VOID; 
+	}
+	
+ 	public AbstractSyntaxTree ast;
 	
 	public ASTBuilder(SourceLexer lexer) {
 		this.lexer = lexer;
@@ -93,7 +100,9 @@ public class ASTBuilder {
 	    }
 	    
         consume(TokenType.SEMICOLON, "Expected ';' after struct declaration");
-	    return new StructDefinition(structName, fields);
+        StructDefinition struct = new StructDefinition(structName, fields);
+        this.definedStructs.put(structName.name, struct);
+        return struct;
 	}
 	
 	/**
@@ -168,11 +177,9 @@ public class ASTBuilder {
 		// parse parameters "(void* param1, uint param2...)"
 		consume(TokenType.LPAREN, "Expected '(' after function name declaration");
 		List<DeclarationStatement> params = new ArrayList<>();
-		// parse list of parameters
 		if (peek().type != TokenType.RPAREN) {
 			do {
-				// reuse the declaration statement parser
-				// for quickies
+				// reuse the declaration statement parser for quickies
 				params.add(parseDeclaration(advance()));
 			} while (consumeIfMatch(TokenType.COMMA)); // for each ",", a new param
 		}
@@ -224,11 +231,19 @@ public class ASTBuilder {
 	}
 	
 	/**
-	 * NEED COMMENT!
-	 * @param type
-	 * @param name
-	 * @param ptrLevel
-	 * @return
+	 * Parses a declaration statement for a variable, array, or struct initializer.
+	 *
+	 * Examples of what this method can parse:
+	 *   int x;                 // plain variable
+	 *   int x = 5;             // variable with initialization
+	 *   char s[] = "hello";    // array without explicit size
+	 *   int arr[10];           // array with size
+	 *   Person p { 10, "John" }; // struct initializer
+	 *
+	 * @param type      The type specifier of the variable (e.g., int, char, struct type)
+	 * @param name      The identifier (variable name)
+	 * @param ptrLevel  Pointer level (0 for non-pointer, 1 for *, 2 for **, etc.)
+	 * @return          A DeclarationStatement representing the fully parsed declaration
 	 */
 	private DeclarationStatement _internalParseDeclaration(TypeSpecifier type, Identifiable name, int ptrLevel) {
 		DeclarationStatement statement;
@@ -360,7 +375,6 @@ public class ASTBuilder {
 		switch (token.type) {
 			case LPAREN: case PLUSPLUS: case MINUSMINUS:
 			case IDENTIFIER: case STAR: {
-				System.out.println(token);
 				// if the current token is an identifier, but the next token cannot be part of an expression
 				// (like assignment operators, increment/decrement, struct access, array indexing, or function calls),
 				// falls through the switch into parseNormalStatement
@@ -393,31 +407,24 @@ public class ASTBuilder {
 				consume(TokenType.LPAREN, "Expected ( after \"if\"");
 				ExpressionNode condition = parseExpression();
 				consume(TokenType.RPAREN, "Expected ) after \"if (\"");
-	
 				// the two body of the if block
 				StatementNode ifBody = null;
 				StatementNode elseBody = null;
-	
-				// if found a block then parse the body instead of a single
-				// statement
+				// if found a block then parse the body instead of a single statement
 				if (peek().type == TokenType.LBRACE) {
 					ifBody = parseScopedBody();
 				} else {
 					ifBody = parseStatement();
 				}
-	
 				// parse "else" block
 				if (peek().type == TokenType.ELSE) {
 					advance(); // consume the ELSE token
-					// if found a block then parse the body instead
-					// of a single statement
-					if (peek().type == TokenType.LBRACE) {
+					if (peek().type == TokenType.LBRACE) { // same thign
 						elseBody = parseScopedBody();
 					} else {
 						elseBody = parseStatement();
 					}
 				}
-	
 				// construct if block with else (optional)
 				return new ConditionBlock(condition, ifBody, elseBody);
 			}
@@ -558,8 +565,7 @@ public class ASTBuilder {
      * the AbstractSyntaxTree class (AST) representation of the Ngu-C program
      */
 	public void build() {
-		while (!isAtEnd() && !consumeIfMatch(TokenType.EOF)) {
-			try {
+		while (!isAtEnd() && !consumeIfMatch(TokenType.EOF)) {try {
 			// parse struct
 			switch (peek().type) {
 			case STRUCT: {
@@ -569,10 +575,7 @@ public class ASTBuilder {
 			// for function and global var declarations
 			// they share the same format of
 			// [TYPE/IDENTIFIER][IDENTIFIER]{(FOR FUNC) / ; OR = FOR DEC}
-			case IDENTIFIER:
-			case VOID:
-			case CHAR:
-			case UINT: {
+			case IDENTIFIER: case VOID: case CHAR: case UINT: {
 				GlobalDefinitionNode parsed = parseGlobalDeclaration();
 				if (parsed instanceof FunctionDeclaration) {
 					ast.functions.add(parsed);
@@ -589,8 +592,7 @@ public class ASTBuilder {
 			}
 			default:
 				throw new IllegalArgumentException("Unexpected value: " + peek().type);
-			}
-			} catch (Exception e) {
+			}} catch (Exception e) {
 				System.err.println(peek().line);
 				e.printStackTrace();
 				System.exit(1);
@@ -601,29 +603,6 @@ public class ASTBuilder {
 	// EXPRESSION PARSING START //
 	/**
 	 * Parse expression. E.g. a * (b + c) >= d<br>
-	 * The process starts at the current token (peek())<br>
-	 * 
-	 * This will consume the entire expression For example, we have:<br>
-	 * 
-	 * 1 * (2 + 3) <br>
-	 * ^ POINTER HERE<br>
-	 * 
-	 * After the parse 1 * (2 + 3)| <br>
-	 *                            ^ POINTER HERE (at the |)<br><br>
-	 *                            
-	 * This supports everything:<br>
-	 * - Simple assignment: a = 1 + 1; <br>
-	 * - Pointer Deref assignment: *a = 1;<br>
-	 * - Complex PD assignment: *(a + b) = b + c;<br>
-	 * - Struct accessor/subscripts: a[0]->b = 1; a.b->c.d; a[0] = 1; a[0]->b, etc..<br>
-	 * - Function calls: func(); func(param1, param2); func(a = b)<br>
-	 * 
-	 * @apiNote Precedence: Assignment (=, +=, ...) -> Combinatory (&&, ||) -> Comparison -> Add/Sub/Bsr/Bsl -> Mul/Div/Mod
-	 * @return a binary tree representing order of expressions
-	 */
-	
-	/**
-	 * Parse expression. E.g. a * (b + c) >= d<br>
 	 * The process starts at the current token (peek())<br><br>
 	 * 
 	 * This will consume the entire expression For example, we have:<br><br>
@@ -631,23 +610,25 @@ public class ASTBuilder {
 	 * 1 * (2 + 3) <br>
 	 * ^ POINTER HERE<br><br>
 	 * 
-	 * After the parse 1 * (2 + 3)| <- POINTER HERE<br><br>
+	 * After the parse 1 * (2 + 3)|<br>
+	 * ---------------------------^  POINTER HERE<br><br>
 	 * 
 	 * ****** THE NGU-C EXPRESSION PRECEDENCE TABLE ******<br>
 	 * 0. literals (base) {@link ASTBuilder#parseBaseLiterals()}<br>
 	 * 1. postfix: (), [], ->, . (highest) {@link ASTBuilder#parsePostfix()}<br>
-	 * 2. unary: +, -, !, ~, *, & {@link ASTBuilder#parseUnary()}<br>
-	 * 3. multiplicative: *, /, % {@link ASTBuilder#parseAritMultiplicative()}<br>
-	 * 4. additive: +, - {@link ASTBuilder#parseAritAdditive()}<br>
-	 * 5. shift: <<, >> {@link ASTBuilder#parseBitShift()}<br>
-	 * 6. relational: <, <=, >, >= {@link ASTBuilder#parseRelational()}<br>
-	 * 7. equality: ==, != {@link ASTBuilder#parseEquality()}<br>
-	 * 8. bitwise AND: & {@link ASTBuilder#parseBitwiseAnd()}<br>
-	 * 9. bitwise XOR: ^ {@link ASTBuilder#parseBitwiseXor()}<br>
-	 * 10. bitwise OR: | {@link ASTBuilder#parseBitwiseOr()}<br>
-	 * 11. logical AND: && {@link ASTBuilder#parseLogicalAnd()}<br>
-	 * 12. logical OR: || {@link ASTBuilder#parseLogicalOr()}<br>
-	 * 13. assignment: =, +=, -=, *=, ... {@link ASTBuilder#parseAssignment()}
+	 * 2. casting: (type)(a) {@link ASTBuilder#parseCCast()}<br>
+	 * 3. unary: +, -, !, ~, *, & {@link ASTBuilder#parseUnary()}<br>
+	 * 4. multiplicative: *, /, % {@link ASTBuilder#parseAritMultiplicative()}<br>
+	 * 5. additive: +, - {@link ASTBuilder#parseAritAdditive()}<br>
+	 * 6. shift: <<, >> {@link ASTBuilder#parseBitShift()}<br>
+	 * 7. relational: <, <=, >, >= {@link ASTBuilder#parseRelational()}<br>
+	 * 8. equality: ==, != {@link ASTBuilder#parseEquality()}<br>
+	 * 9. bitwise AND: & {@link ASTBuilder#parseBitwiseAnd()}<br>
+	 * 10. bitwise XOR: ^ {@link ASTBuilder#parseBitwiseXor()}<br>
+	 * 11. bitwise OR: | {@link ASTBuilder#parseBitwiseOr()}<br>
+	 * 12. logical AND: && {@link ASTBuilder#parseLogicalAnd()}<br>
+	 * 13. logical OR: || {@link ASTBuilder#parseLogicalOr()}<br>
+	 * 14. assignment: =, +=, -=, *=, ... {@link ASTBuilder#parseAssignment()}
 	 * 
 	 * @return a binary tree representing order of expressions
 	 */
@@ -655,6 +636,22 @@ public class ASTBuilder {
 		return this.parseAssignment();
 	}
 	
+	/**
+	 * Parse a left-associative binary expression, e.g. a + b - c.<br>
+	 * 
+	 * This method handles any binary operators that are left-associative by consuming
+	 * the left-hand side (LHS) first, then repeatedly consuming operators and right-hand sides (RHS)
+	 * until no more matching operators are found.<br>
+	 * 
+	 * The actual node construction is delegated to a {@link NodeCombiner}, allowing this
+	 * method to be reused for different binary node types (e.g., arithmetic, bitwise, logical).<br>
+	 * 
+	 * @param higherPrecedenceParser a supplier that parses expressions of higher precedence
+	 *   (e.g., multiplicative expressions for additive operators)
+	 * @param combiner a function that combines LHS, operator, and RHS into an ExpressionNode
+	 * @param operators the token types representing the operators this parser should consume
+	 * @return an {@link ExpressionNode} representing the fully parsed left-associative binary expression
+	 */
 	private ExpressionNode parseLeftAssociativeBinary(
 		Supplier<ExpressionNode> higherPrecedenceParser,
 		NodeCombiner<ExpressionNode, TokenType, ExpressionNode, ExpressionNode> combiner, 
@@ -672,6 +669,11 @@ public class ASTBuilder {
 		return lhs;
 	}
 	
+	/**
+	 * For binary operation node (LHS = left leaf, OP = root, RHS = right leaf)
+	 * 
+	 * @see {@link ASTBuilder#parseLeftAssociativeBinary(Supplier, NodeCombiner, TokenType...)}
+	 */
 	private ExpressionNode parseLeftAssociativeBinaryOpNode(
 		Supplier<ExpressionNode> higherPrecedenceParser,
 		TokenType... operators
@@ -681,7 +683,7 @@ public class ASTBuilder {
 		, operators);
 	}
 	
-	// P13
+	// P14
 	private ExpressionNode parseAssignment() {
 		return parseLeftAssociativeBinary(
 			this::parseLogicalOr,
@@ -695,39 +697,39 @@ public class ASTBuilder {
 			
 	}
 	
-	// P12
+	// P13
 	private ExpressionNode parseLogicalOr() {
 		return parseLeftAssociativeBinaryOpNode(this::parseLogicalAnd, TokenType.OROR);
 	}
 	
-	// P11
+	// P12
 	private ExpressionNode parseLogicalAnd() {
 		return parseLeftAssociativeBinaryOpNode(this::parseBitwiseOr, TokenType.ANDAND);
 	}
 	
-	// P10
+	// P11
 	private ExpressionNode parseBitwiseOr() {
 		return parseLeftAssociativeBinaryOpNode(this::parseBitwiseXor, TokenType.OR);
 	}
 	
-	// P9
+	// P10
 	private ExpressionNode parseBitwiseXor() {
 		return parseLeftAssociativeBinaryOpNode(this::parseBitwiseAnd, TokenType.XOR);
 	}
 	
-	// P8
+	// P9
 	private ExpressionNode parseBitwiseAnd() {
 		return parseLeftAssociativeBinaryOpNode(this::parseEquality, TokenType.XOR);
 	}
 
-	// P7
+	// P8
 	private ExpressionNode parseEquality() {
 		return parseLeftAssociativeBinaryOpNode(this::parseRelational, 
 			TokenType.EQEQ, TokenType.DIFF
 		);
 	}
 	
-	// P6
+	// P7
 	private ExpressionNode parseRelational() {
 		return parseLeftAssociativeBinaryOpNode(this::parseBitShift, 
 			TokenType.LT, TokenType.LE,
@@ -735,25 +737,50 @@ public class ASTBuilder {
 		);
 	}
 	
-	// P5
+	// P6
 	private ExpressionNode parseBitShift() {
 		return parseLeftAssociativeBinaryOpNode(this::parseAritAdditive, 
 			TokenType.BSR, TokenType.BSL
 		);
 	}
 	
-	// P4
+	// P5
 	private ExpressionNode parseAritAdditive() {
 		return parseLeftAssociativeBinaryOpNode(this::parseAritMultiplicative, 
 			TokenType.PLUS, TokenType.MINUS
 		);
 	}
 	
-	// P3
+	// P4
 	private ExpressionNode parseAritMultiplicative() {
-		return parseLeftAssociativeBinaryOpNode(this::parseUnary, 
+		return parseLeftAssociativeBinaryOpNode(this::parseCCast, 
 			TokenType.STAR, TokenType.SLASH, TokenType.MOD
 		);
+	}
+	
+	// P3
+	private ExpressionNode parseCCast() {
+		if (check(TokenType.LPAREN)) {
+			Token type = peekAhead(1); // this is the token after the '('
+			if (isDefinedOrPrimitiveType(type)) { // only continue if its a type
+				// if it is indeed a cast, consume the '(' and the type token
+				advance(); // this consumes the '('
+				advance(); // this consumes the type (in peekAhead(1))
+				
+				int ptrLevel = 0;
+				while (consumeIfMatch(TokenType.STAR)) {
+					ptrLevel++;
+				}
+				
+				consume(TokenType.RPAREN, "Expected closing ')' after cast type");
+				return new CCastNode(
+					TypeSpecifier.from(type), ptrLevel, 
+					parseCCast() // recursive, since you can stack casts: (uint)(char*) a
+				);
+			}
+		}
+		// just falls off if found no casting behaviors
+		return parseUnary();
 	}
 	
 	// P2
@@ -774,13 +801,12 @@ public class ASTBuilder {
 	
 	// P1
 	private ExpressionNode parsePostfix() {
-		ExpressionNode lhs = parseBaseLiterals(); // higher precedence
+		ExpressionNode base = parseBaseLiterals(); // higher precedence
 		while (true) {
-			Token op = previous();
 			if (consumeIfMatch(TokenType.LSQUARE)) { // [<index>]
 				ExpressionNode index = parseExpression();
 				consume(TokenType.RSQUARE, "Expected ']'");
-				lhs = new SubscriptNode(lhs, index);
+				base = new SubscriptNode(base, index);
 			} else if (consumeIfMatch(TokenType.LPAREN)) { // (<param1>,<param-nth>...)
 				List<ExpressionNode> args = new ArrayList<>();
 				if (peek().type != TokenType.RPAREN) {
@@ -789,16 +815,20 @@ public class ASTBuilder {
 					} while (consumeIfMatch(TokenType.COMMA)); // for each ","
 				}
 				consume(TokenType.RPAREN, "Expected ')'");
-				lhs = new CallNode(lhs, args);
+				base = new CallNode(base, args);
 			} else if (consumeIfMatch(TokenType.DOT, TokenType.ARROW)) { // a.b or a->b 
-				lhs = new MemberOf(lhs, parseBaseLiterals(), op.type == TokenType.ARROW);
+				Token op = previous();
+				base = new MemberOf(
+					base, parseBaseLiterals(), 
+					op.type == TokenType.ARROW
+				);
 			} else if (check(TokenType.PLUSPLUS) || check(TokenType.MINUSMINUS)) { // ++ or -- (a++ <- post)
-				lhs = UnaryArithmeticNode.postfix(advance().type, lhs);
+				base = UnaryArithmeticNode.postfix(advance().type, base);
 			} else {
 				break; // ran out of postfix
 			}
 		}
-		return lhs;
+		return base;
 	}
 	
 	// P0

@@ -1,6 +1,5 @@
 package com.gkvn.lexer;
 
-import java.util.HashSet;
 import java.util.Set;
 
 public enum TokenType {
@@ -111,5 +110,9 @@ public enum TokenType {
 	
 	public boolean isStructAccessOperator() {
 		return this == DOT || this == ARROW;
+	}
+	
+	public boolean isPrimitiveType() {
+		return this == VOID || this == UINT || this == CHAR;
 	}
 }

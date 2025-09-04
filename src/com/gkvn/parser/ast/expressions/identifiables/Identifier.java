@@ -1,7 +1,7 @@
 package com.gkvn.parser.ast.expressions.identifiables;
 
 public class Identifier extends Identifiable {
-	private String name;
+	public final String name;
 	
 	public Identifier(String name) {
 		this.name = name;

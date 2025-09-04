@@ -1,4 +1,4 @@
-package com.gkvn.parser.ast;
+package com.gkvn.parser;
 
 @FunctionalInterface
 public interface NodeCombiner<L, O, R, N> {
