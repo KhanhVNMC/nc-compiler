@@ -10,7 +10,7 @@ import com.gkvn.parser.ASTBuilder;
 public class Main {
 
 	public static void main(String[] args) throws IOException {
-		var cc = Files.readString(Path.of("testc/test6.c")).replace("CXX_COMPILER", "100");
+		var cc = Files.readString(Path.of("testc/s.c")).replace("CXX_COMPILER", "100");
 		SourceLexer lex = new SourceLexer(cc);
 		ASTBuilder syntaxTree = new ASTBuilder(lex);
 		syntaxTree.build();

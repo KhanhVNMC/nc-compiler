@@ -2,12 +2,17 @@ package com.gkvn.parser;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import javax.management.openmbean.InvalidOpenTypeException;
 
 import org.w3c.dom.ls.LSException;
 
 import com.gkvn.lexer.SourceLexer;
 import com.gkvn.lexer.Token;
 import com.gkvn.lexer.TokenType;
+import com.gkvn.parser.ast.NodeCombiner;
 import com.gkvn.parser.ast.TypeSpecifier;
 import com.gkvn.parser.ast.definitions.FunctionDeclaration;
 import com.gkvn.parser.ast.definitions.GlobalDefinitionNode;
@@ -616,204 +621,188 @@ public class ASTBuilder {
 	 * @apiNote Precedence: Assignment (=, +=, ...) -> Combinatory (&&, ||) -> Comparison -> Add/Sub/Bsr/Bsl -> Mul/Div/Mod
 	 * @return a binary tree representing order of expressions
 	 */
-	private ExpressionNode parseExpression() {
-		// note: LHS = LEFT HAND SIDE, RHS = RIGHT HAND SIDE
-		ExpressionNode lhs = parseCombinatory(); // higher precedence
-		while (true) {
-	        // check for assignment operators
-			if (!consumeIfMatch(
-				TokenType.EQ, TokenType.ADDEQ, 
-				TokenType.SUBEQ, TokenType.MULEQ, 
-				TokenType.DIVEQ, TokenType.BSREQ, 
-				TokenType.BSLEQ, TokenType.OREQ, 
-				TokenType.ANDEQ, TokenType.XOREQ
-			)) {
-				break;
-			}
-			Token operator = previous();
-			ExpressionNode rhs = parseCombinatory(); // higher precedence
-			lhs = new AssignmentNode(
-				lhs, // left
-				operator.type, // op
-				rhs // right
-			);
-		}
-		return lhs;
-	}
-
-	// AND, OR (&&, ||)
-	private ExpressionNode parseCombinatory() {
-		ExpressionNode lhs = parseComparisons(); // higher precedence
-		while (true) {
-			if (!consumeIfMatch(
-				TokenType.ANDAND, 
-				TokenType.OROR
-			)) {
-				break;
-			}
-			Token operator = previous();
-			ExpressionNode rhs = parseComparisons(); // higher precedence
-			lhs = new BinaryOpNode(
-				lhs, // left
-				operator.type, // op
-				rhs // right
-			);
-		}
-		return lhs;
-	}
 	
-	// GE, LE, GT, LT... (<, >, >=, <=, ==, !=) 
-	private ExpressionNode parseComparisons() {
-		ExpressionNode lhs = parseAdditiveOrShift(); // higher precedence
-		while (true) {
-			if (!consumeIfMatch(
-				TokenType.GE, TokenType.LE, 
-				TokenType.GT, TokenType.LT, 
-				TokenType.EQEQ, TokenType.DIFF
-			)) {
-				break;
-			}
-			Token operator = previous();
-			ExpressionNode rhs = parseAdditiveOrShift(); // higher precedence
-			lhs = new BinaryOpNode(
-				lhs, // left
-				operator.type, // op
-				rhs // right
-			);
-		}
-		return lhs;
-	}
-	
-	// ADD, SUB, BSL, BSR (+, -, <<, >>)
-	private ExpressionNode parseAdditiveOrShift() {
-		ExpressionNode lhs = parseMulDivMod(); // higher precedence
-		while (true) {
-			if (!consumeIfMatch(
-				TokenType.BSL, TokenType.BSR, 
-				TokenType.PLUS, TokenType.MINUS
-			)) {
-				break;
-			}
-			Token operator = previous();
-			ExpressionNode rhs = parseMulDivMod(); // higher precedence
-			// new branch of the binary tree
-			lhs = new BinaryOpNode(
-				lhs, // left
-				operator.type, // op
-				rhs // right
-			);
-		}
-		return lhs;
-	}
-	
-	// MUL, DIV, MOD (*, /, %)
-	private ExpressionNode parseMulDivMod() {
-		ExpressionNode lhs = parseUnary(); // higher precedence
-		while (true) {
-			if (!consumeIfMatch(
-				TokenType.STAR, TokenType.SLASH, TokenType.MOD
-			)) {
-				break;
-			}
-			Token operator = previous();
-			ExpressionNode rhs = parseUnary(); // higher precedence
-			lhs = new BinaryOpNode(
-				lhs, // left
-				operator.type, // op
-				rhs // right
-			);
-		}
-		return lhs;
-	}
-
 	/**
-	 * @return parse an expression, with unary operator
+	 * Parse expression. E.g. a * (b + c) >= d<br>
+	 * The process starts at the current token (peek())<br><br>
+	 * 
+	 * This will consume the entire expression For example, we have:<br><br>
+	 * 
+	 * 1 * (2 + 3) <br>
+	 * ^ POINTER HERE<br><br>
+	 * 
+	 * After the parse 1 * (2 + 3)| <- POINTER HERE<br><br>
+	 * 
+	 * ****** THE NGU-C EXPRESSION PRECEDENCE TABLE ******<br>
+	 * 0. literals (base) {@link ASTBuilder#parseBaseLiterals()}<br>
+	 * 1. postfix: (), [], ->, . (highest) {@link ASTBuilder#parsePostfix()}<br>
+	 * 2. unary: +, -, !, ~, *, & {@link ASTBuilder#parseUnary()}<br>
+	 * 3. multiplicative: *, /, % {@link ASTBuilder#parseAritMultiplicative()}<br>
+	 * 4. additive: +, - {@link ASTBuilder#parseAritAdditive()}<br>
+	 * 5. shift: <<, >> {@link ASTBuilder#parseBitShift()}<br>
+	 * 6. relational: <, <=, >, >= {@link ASTBuilder#parseRelational()}<br>
+	 * 7. equality: ==, != {@link ASTBuilder#parseEquality()}<br>
+	 * 8. bitwise AND: & {@link ASTBuilder#parseBitwiseAnd()}<br>
+	 * 9. bitwise XOR: ^ {@link ASTBuilder#parseBitwiseXor()}<br>
+	 * 10. bitwise OR: | {@link ASTBuilder#parseBitwiseOr()}<br>
+	 * 11. logical AND: && {@link ASTBuilder#parseLogicalAnd()}<br>
+	 * 12. logical OR: || {@link ASTBuilder#parseLogicalOr()}<br>
+	 * 13. assignment: =, +=, -=, *=, ... {@link ASTBuilder#parseAssignment()}
+	 * 
+	 * @return a binary tree representing order of expressions
 	 */
-	private ExpressionNode parseUnary() {
-		// prefixes (-, +, &, *, !)
-		if (consumeIfMatch(TokenType.BANG, // !negate
-			TokenType.MINUS, // -negative
-			TokenType.AMPERSAND, // &pointer
-			TokenType.STAR, // *deref
-			TokenType.PLUS // +plus
-		)) {
-			Token operator = previous();
-			ExpressionNode right = parseUnary(); // recursion! support chained shi like +-+-a (cursed af ik)
-			return new UnaryOpNode(operator.type, right);
-		}
-
-		return parseMemberAccessor(); // highest precendence
+	private ExpressionNode parseExpression() {
+		return this.parseAssignment();
 	}
 	
-	private ExpressionNode parseMemberAccessor() {
-		ExpressionNode lhs = parsePostfixPrefix(); // higher precedence
+	private ExpressionNode parseLeftAssociativeBinary(
+		Supplier<ExpressionNode> higherPrecedenceParser,
+		NodeCombiner<ExpressionNode, TokenType, ExpressionNode, ExpressionNode> combiner, 
+		TokenType... operators
+	) {
+		ExpressionNode lhs = higherPrecedenceParser.get();
 		while (true) {
-			if (!consumeIfMatch(
-				TokenType.DOT, TokenType.ARROW
-			)) {
+			if (!consumeIfMatch(operators)) {
 				break;
 			}
 			Token operator = previous();
-			ExpressionNode rhs = parsePostfixPrefix(); // higher precedence
-			lhs = new MemberOf(
-				lhs, // left
-				rhs, // right
-				operator.type == TokenType.ARROW
-			);
+			ExpressionNode rhs = higherPrecedenceParser.get();
+			lhs = combiner.apply(lhs, operator.type, rhs);
 		}
 		return lhs;
 	}
 	
-	private ExpressionNode parsePostfixPrefix() {
-		if (check(TokenType.PLUSPLUS) || check(TokenType.MINUSMINUS)) {
-			return UnaryArithmeticNode.prefix(
-				advance().type, parsePostfixPrefix()
-			);
-		}
-		ExpressionNode base = parseArraySubscript(); // base case
-		if (check(TokenType.PLUSPLUS) || check(TokenType.MINUSMINUS)) {
-			base = UnaryArithmeticNode.postfix(
-				advance().type /* the operator behind (a++ < this) */, base
-			);
-		}
-		return base;
+	private ExpressionNode parseLeftAssociativeBinaryOpNode(
+		Supplier<ExpressionNode> higherPrecedenceParser,
+		TokenType... operators
+	) {
+		return parseLeftAssociativeBinary(higherPrecedenceParser,
+			(lhs, op, rhs) -> new BinaryOpNode(lhs, op, rhs)
+		, operators);
 	}
 	
-	private ExpressionNode parseArraySubscript() {
-		ExpressionNode base = parseBaseExpression(); // base case
-		while (consumeIfMatch(TokenType.LSQUARE)) {
-			base = new SubscriptNode(base, parseExpression());
-			consume(TokenType.RSQUARE, "Expected ']' after array subscript");
-		}
-		return base;
+	// P13
+	private ExpressionNode parseAssignment() {
+		return parseLeftAssociativeBinary(
+			this::parseLogicalOr,
+			(lvalue, op, rvalue) -> new AssignmentNode(lvalue, op, rvalue),
+			TokenType.EQ, TokenType.ADDEQ, TokenType.MODEQ,
+			TokenType.SUBEQ, TokenType.MULEQ, 
+			TokenType.DIVEQ, TokenType.BSREQ, 
+			TokenType.BSLEQ, TokenType.OREQ, 
+			TokenType.ANDEQ, TokenType.XOREQ
+		);
+			
 	}
 	
-	private CallNode parseFunctionCall(Token funcName) {
-		List<ExpressionNode> args = new ArrayList<>();
-		// if there is arguments, parse
-		if (peek().type != TokenType.RPAREN) {
-			do {
-				// parse each expression
-				args.add(parseExpression());
-			} while (consumeIfMatch(TokenType.COMMA)); // for each ","
-		}
-		
-		// a function should end with a )
-		consume(TokenType.RPAREN, "Expected ')'");
-		return new CallNode(
-			new Identifier(funcName.lexeme), args
+	// P12
+	private ExpressionNode parseLogicalOr() {
+		return parseLeftAssociativeBinaryOpNode(this::parseLogicalAnd, TokenType.OROR);
+	}
+	
+	// P11
+	private ExpressionNode parseLogicalAnd() {
+		return parseLeftAssociativeBinaryOpNode(this::parseBitwiseOr, TokenType.ANDAND);
+	}
+	
+	// P10
+	private ExpressionNode parseBitwiseOr() {
+		return parseLeftAssociativeBinaryOpNode(this::parseBitwiseXor, TokenType.OR);
+	}
+	
+	// P9
+	private ExpressionNode parseBitwiseXor() {
+		return parseLeftAssociativeBinaryOpNode(this::parseBitwiseAnd, TokenType.XOR);
+	}
+	
+	// P8
+	private ExpressionNode parseBitwiseAnd() {
+		return parseLeftAssociativeBinaryOpNode(this::parseEquality, TokenType.XOR);
+	}
+
+	// P7
+	private ExpressionNode parseEquality() {
+		return parseLeftAssociativeBinaryOpNode(this::parseRelational, 
+			TokenType.EQEQ, TokenType.DIFF
 		);
 	}
 	
-	/**
-	 * Parse expression's operands, can range from simple numbers to identifiers,
-	 * pointers, and function calls
-	 * 
-	 * This also recursively parse enclosed expressions like (1+1)
-	 * 
-	 * @return the expression node representing it
-	 */
-	private ExpressionNode parseBaseExpression() {
+	// P6
+	private ExpressionNode parseRelational() {
+		return parseLeftAssociativeBinaryOpNode(this::parseBitShift, 
+			TokenType.LT, TokenType.LE,
+			TokenType.GT, TokenType.GE
+		);
+	}
+	
+	// P5
+	private ExpressionNode parseBitShift() {
+		return parseLeftAssociativeBinaryOpNode(this::parseAritAdditive, 
+			TokenType.BSR, TokenType.BSL
+		);
+	}
+	
+	// P4
+	private ExpressionNode parseAritAdditive() {
+		return parseLeftAssociativeBinaryOpNode(this::parseAritMultiplicative, 
+			TokenType.PLUS, TokenType.MINUS
+		);
+	}
+	
+	// P3
+	private ExpressionNode parseAritMultiplicative() {
+		return parseLeftAssociativeBinaryOpNode(this::parseUnary, 
+			TokenType.STAR, TokenType.SLASH, TokenType.MOD
+		);
+	}
+	
+	// P2
+	private ExpressionNode parseUnary() {
+		if (consumeIfMatch(TokenType.BANG, // !negate
+			TokenType.MINUS, // -negative
+			TokenType.AMPERSAND, // &pointer
+			TokenType.STAR, // *ptr_deref
+			TokenType.PLUS, // +plus
+			TokenType.TILDE // ~wiggly
+		)) {
+			Token operator = previous();
+			ExpressionNode next = parseUnary(); // chained: +-+-a support
+			return new UnaryOpNode(operator.type, next);
+		}
+		return parsePostfix(); // highest precendence (P1)
+	}
+	
+	// P1
+	private ExpressionNode parsePostfix() {
+		ExpressionNode lhs = parseBaseLiterals(); // higher precedence
+		while (true) {
+			Token op = previous();
+			if (consumeIfMatch(TokenType.LSQUARE)) { // [<index>]
+				ExpressionNode index = parseExpression();
+				consume(TokenType.RSQUARE, "Expected ']'");
+				lhs = new SubscriptNode(lhs, index);
+			} else if (consumeIfMatch(TokenType.LPAREN)) { // (<param1>,<param-nth>...)
+				List<ExpressionNode> args = new ArrayList<>();
+				if (peek().type != TokenType.RPAREN) {
+					do {
+						args.add(parseExpression());
+					} while (consumeIfMatch(TokenType.COMMA)); // for each ","
+				}
+				consume(TokenType.RPAREN, "Expected ')'");
+				lhs = new CallNode(lhs, args);
+			} else if (consumeIfMatch(TokenType.DOT, TokenType.ARROW)) { // a.b or a->b 
+				lhs = new MemberOf(lhs, parseBaseLiterals(), op.type == TokenType.ARROW);
+			} else if (check(TokenType.PLUSPLUS) || check(TokenType.MINUSMINUS)) { // ++ or -- (a++ <- post)
+				lhs = UnaryArithmeticNode.postfix(advance().type, lhs);
+			} else {
+				break; // ran out of postfix
+			}
+		}
+		return lhs;
+	}
+	
+	// P0
+	private ExpressionNode parseBaseLiterals() {
 		Token token = advance();
 		switch (token.type) {
 		case LITERAL_CHAR:
@@ -845,44 +834,11 @@ public class ASTBuilder {
 			return new StringLiteralNode(
 				token.lexeme.substring(1, token.lexeme.length() - 1)
 			);
-		
-		// ***** FUNC CALL ***** //
 		case IDENTIFIER:
-			// look one token ahead of the identifier
-			TokenType next = peek().type;
-			
-			// a function is also an expression, wild huh?
-			if (next == TokenType.LPAREN) {
-				advance();
-				// token here is the function name
-				return parseFunctionCall(token);
-			}
-			
 			return new Identifier(token.lexeme);
 		default:
 			throw new RuntimeException("Found unexpected token: " + token + ". Expected a valid expression");
 		}
-	}
-	
-	/**
-	 * Recursively parses subscript expressions of the form identifier[index],
-	 * supporting chained subscripts like array[0][1]. 
-	 * Converts them into nested SubscriptNode instances.
-	 *
-	 * @param expr The base identifiable expression
-	 * @return An Identifiable representing the entire subscript chain
-	 */
-	private Identifiable parseSubscriptNodes(Identifiable expr) {
-		Identifiable base = expr; // base node
-		if (peek().type != TokenType.LSQUARE) {
-			return base;
-		}
-		consume(TokenType.LSQUARE, "Expected '['");
-		// parse the expression inside the brackets
-		base = new SubscriptNode(base, parseExpression());
-		consume(TokenType.RSQUARE, "Expected ']' after opening subscript node");
-		// recursively check for and parse additional subscript expressions (e.g., `a[0][1]`).
-		return parseSubscriptNodes(base);
 	}
 	// EXPRESSION PARSING ENDS
 	

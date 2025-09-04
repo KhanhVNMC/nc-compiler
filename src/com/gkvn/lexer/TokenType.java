@@ -63,6 +63,7 @@ public enum TokenType {
 	XOR, // ^
 	BSR, // >>
 	BSL, // <<
+	TILDE, // ~
 
 	// --- Punctuation / delimiters ---
 	COMMA, // ,
