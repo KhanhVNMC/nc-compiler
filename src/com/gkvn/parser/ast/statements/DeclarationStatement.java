@@ -4,13 +4,13 @@ import com.gkvn.parser.ast.TypeSpecifier;
 import com.gkvn.parser.ast.expressions.ArrayLiteral;
 import com.gkvn.parser.ast.expressions.ExpressionNode;
 import com.gkvn.parser.ast.expressions.StructLiteral;
-import com.gkvn.parser.ast.expressions.identifiables.Identifiable;
+import com.gkvn.parser.ast.expressions.identifiables.Identifier;
 
 public class DeclarationStatement extends StatementNode {
 	// rudamentary components of a declaration
 	private TypeSpecifier type;
 	private int pointerLevel;
-	private Identifiable identifier;
+	private Identifier identifier;
 	
 	// assignments
 	private ExpressionNode initialValue;
@@ -20,7 +20,7 @@ public class DeclarationStatement extends StatementNode {
 	 * Constructor for scalar (non-array) variable declarations.
 	 */
 	private DeclarationStatement(
-		TypeSpecifier type, int ptrLevel, Identifiable name, 
+		TypeSpecifier type, int ptrLevel, Identifier name, 
 		ExpressionNode sizeValue, // for rudamentary arrays, like "uint a[10]"
 		ExpressionNode initialValue
 	) {
@@ -29,6 +29,18 @@ public class DeclarationStatement extends StatementNode {
 		this.identifier = name;
 		this.arraySize = sizeValue;
 		this.initialValue = initialValue;
+	}
+	
+	public int ptrLvl() {
+		return pointerLevel;
+	}
+	
+	public TypeSpecifier type() {
+		return type;
+	}
+	
+	public Identifier identifier() {
+		return this.identifier;
 	}
 	
 	public boolean isPointer() {
@@ -45,19 +57,19 @@ public class DeclarationStatement extends StatementNode {
 	
 	// factory methods
 	public static DeclarationStatement variable(
-		TypeSpecifier type, int ptrLevel, Identifiable name, ExpressionNode init
+		TypeSpecifier type, int ptrLevel, Identifier name, ExpressionNode init
 	) {
 		return new DeclarationStatement(type, ptrLevel, name, null, init);
 	}
 	
 	public static DeclarationStatement struct(
-		TypeSpecifier type, int ptrLevel, Identifiable name, StructLiteral init
+		TypeSpecifier type, int ptrLevel, Identifier name, StructLiteral init
 	) {
 		return new DeclarationStatement(type, ptrLevel, name, null, init);
 	}
 	
 	public static DeclarationStatement arrayWithSize(
-		TypeSpecifier type, int ptrLevel, Identifiable name, ExpressionNode sizeExpression
+		TypeSpecifier type, int ptrLevel, Identifier name, ExpressionNode sizeExpression
 	) {
 		return new DeclarationStatement(type, ptrLevel, name, 
 			sizeExpression /*sized array*/, null /*e.g. uint a[3];*/
@@ -65,7 +77,7 @@ public class DeclarationStatement extends StatementNode {
 	}
 	
 	public static DeclarationStatement array(
-		TypeSpecifier type, int ptrLevel, Identifiable name, ArrayLiteral arrayLiteral
+		TypeSpecifier type, int ptrLevel, Identifier name, ArrayLiteral arrayLiteral
 	) {
 		return new DeclarationStatement(type, ptrLevel, name, 
 			null /*unsized array*/, arrayLiteral /*e.g. {1,2,3}*/

@@ -34,6 +34,7 @@ public enum TokenType {
 
 	// --- Logical / unary operators ---
 	BANG, // !
+	SIZEOF, // sizeof (shocking right)
 	ANDAND, // &&
 	OROR, // ||
 

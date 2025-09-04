@@ -5,13 +5,25 @@ import java.util.List;
 import com.gkvn.lexer.TokenType;
 
 public class BinaryOpNode extends ExpressionNode {
-	public ExpressionNode left, right;
-    public TokenType operator;
+	private ExpressionNode left, right;
+    private TokenType operator;
     
     public BinaryOpNode(ExpressionNode left, TokenType operator, ExpressionNode right) {
     	this.left = left;
     	this.right = right;
     	this.operator = operator;
+    }
+    
+    public ExpressionNode left() {
+    	return left;
+    }
+    
+    public TokenType op() {
+    	return operator;
+    }
+    
+    public ExpressionNode right() {
+    	return right;
     }
     
     public void emitAsm(List<String> instructions, ExpressionNode node) {

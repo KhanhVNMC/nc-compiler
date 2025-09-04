@@ -3,12 +3,14 @@ package com.gkvn.parser;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.gkvn.parser.ast.definitions.GlobalDefinitionNode;
+import com.gkvn.parser.ast.definitions.FunctionDefinition;
+import com.gkvn.parser.ast.definitions.GlobalVariable;
+import com.gkvn.parser.ast.definitions.StructDefinition;
 
 public class AbstractSyntaxTree {
-	protected final List<GlobalDefinitionNode> globalVariables = new ArrayList<>();
-	protected final List<GlobalDefinitionNode> structs = new ArrayList<>();
-	protected final List<GlobalDefinitionNode> functions = new ArrayList<>();
+	public final List<GlobalVariable> globalVariables = new ArrayList<>();
+	public final List<StructDefinition> structs = new ArrayList<>();
+	public final List<FunctionDefinition> functions = new ArrayList<>();
 
 	public AbstractSyntaxTree() {}
 	

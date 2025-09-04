@@ -2,7 +2,7 @@ package com.gkvn.parser.ast.expressions.identifiables;
 
 import com.gkvn.parser.ast.expressions.ExpressionNode;
 
-public class MemberOf extends Identifiable {
+public class MemberOf extends ExpressionNode {
 	public ExpressionNode parent;
 	public ExpressionNode child;
 	public boolean arrow = false;

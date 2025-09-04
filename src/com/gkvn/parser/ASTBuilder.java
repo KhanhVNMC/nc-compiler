@@ -10,7 +10,7 @@ import com.gkvn.lexer.SourceLexer;
 import com.gkvn.lexer.Token;
 import com.gkvn.lexer.TokenType;
 import com.gkvn.parser.ast.TypeSpecifier;
-import com.gkvn.parser.ast.definitions.FunctionDeclaration;
+import com.gkvn.parser.ast.definitions.FunctionDefinition;
 import com.gkvn.parser.ast.definitions.GlobalDefinitionNode;
 import com.gkvn.parser.ast.definitions.GlobalVariable;
 import com.gkvn.parser.ast.definitions.StructDefinition;
@@ -26,7 +26,6 @@ import com.gkvn.parser.ast.expressions.StringLiteralNode;
 import com.gkvn.parser.ast.expressions.StructLiteral;
 import com.gkvn.parser.ast.expressions.UnaryArithmeticNode;
 import com.gkvn.parser.ast.expressions.UnaryOpNode;
-import com.gkvn.parser.ast.expressions.identifiables.Identifiable;
 import com.gkvn.parser.ast.expressions.identifiables.Identifier;
 import com.gkvn.parser.ast.expressions.identifiables.MemberOf;
 import com.gkvn.parser.ast.expressions.identifiables.SubscriptNode;
@@ -101,7 +100,7 @@ public class ASTBuilder {
 	    
         consume(TokenType.SEMICOLON, "Expected ';' after struct declaration");
         StructDefinition struct = new StructDefinition(structName, fields);
-        this.definedStructs.put(structName.name, struct);
+        this.definedStructs.put(structName.name(), struct);
         return struct;
 	}
 	
@@ -173,7 +172,7 @@ public class ASTBuilder {
 	 * @param ptrLevel the pointer level (void**) = 2
 	 * @param nameToken the function name 
 	 */
-	private FunctionDeclaration parseFunctionDeclaration(TypeSpecifier type, int ptrLevel, Token nameToken) {
+	private FunctionDefinition parseFunctionDeclaration(TypeSpecifier type, int ptrLevel, Token nameToken) {
 		// parse parameters "(void* param1, uint param2...)"
 		consume(TokenType.LPAREN, "Expected '(' after function name declaration");
 		List<DeclarationStatement> params = new ArrayList<>();
@@ -185,7 +184,7 @@ public class ASTBuilder {
 		}
 		consume(TokenType.RPAREN, "Expected ')' after function parameters");
 		
-		return new FunctionDeclaration(
+		return new FunctionDefinition(
 			type, ptrLevel, new Identifier(nameToken.lexeme), // type[*] name
 			params, // (params...)
 			consumeIfMatch(TokenType.SEMICOLON) ? null : // for forward declaration: void func();
@@ -245,7 +244,7 @@ public class ASTBuilder {
 	 * @param ptrLevel  Pointer level (0 for non-pointer, 1 for *, 2 for **, etc.)
 	 * @return          A DeclarationStatement representing the fully parsed declaration
 	 */
-	private DeclarationStatement _internalParseDeclaration(TypeSpecifier type, Identifiable name, int ptrLevel) {
+	private DeclarationStatement _internalParseDeclaration(TypeSpecifier type, Identifier name, int ptrLevel) {
 		DeclarationStatement statement;
 		
 		// if the struct is like this "Type name{}", its a struct initializer
@@ -577,10 +576,10 @@ public class ASTBuilder {
 			// [TYPE/IDENTIFIER][IDENTIFIER]{(FOR FUNC) / ; OR = FOR DEC}
 			case IDENTIFIER: case VOID: case CHAR: case UINT: {
 				GlobalDefinitionNode parsed = parseGlobalDeclaration();
-				if (parsed instanceof FunctionDeclaration) {
-					ast.functions.add(parsed);
-				} else if (parsed instanceof GlobalVariable) {
-					ast.globalVariables.add(parsed);
+				if (parsed instanceof FunctionDefinition funcDec) {
+					ast.functions.add(funcDec);
+				} else if (parsed instanceof GlobalVariable gloVar) {
+					ast.globalVariables.add(gloVar);
 				} else {
 					throw new RuntimeException("Something went wrong!");
 				}
@@ -760,9 +759,10 @@ public class ASTBuilder {
 	
 	// P3
 	private ExpressionNode parseCCast() {
+		// prevents the need to backtrack by only peeking and not consuming
 		if (check(TokenType.LPAREN)) {
-			Token type = peekAhead(1); // this is the token after the '('
-			if (isDefinedOrPrimitiveType(type)) { // only continue if its a type
+			Token castTarget = peekAhead(1); // this is the token after the '('
+			if (isDefinedOrPrimitiveType(castTarget)) { // only continue if its a type
 				// if it is indeed a cast, consume the '(' and the type token
 				advance(); // this consumes the '('
 				advance(); // this consumes the type (in peekAhead(1))
@@ -774,7 +774,7 @@ public class ASTBuilder {
 				
 				consume(TokenType.RPAREN, "Expected closing ')' after cast type");
 				return new CCastNode(
-					TypeSpecifier.from(type), ptrLevel, 
+					TypeSpecifier.from(castTarget), ptrLevel, 
 					parseCCast() // recursive, since you can stack casts: (uint)(char*) a
 				);
 			}

@@ -9,12 +9,20 @@ import com.gkvn.parser.ast.statements.DeclarationStatement;
  * Represents a struct declaration
  */
 public class StructDefinition extends GlobalDefinitionNode {
-    public Identifier name;
-    public List<DeclarationStatement> fields;
+    private Identifier name;
+    private List<DeclarationStatement> fields;
 
     public StructDefinition(Identifier name, List<DeclarationStatement> fields) {
         this.name = name;
         this.fields = fields;
+    }
+    
+    public Identifier identifier() {
+    	return name;
+    }
+    
+    public List<DeclarationStatement> fields() {
+    	return this.fields;
     }
 
     @Override

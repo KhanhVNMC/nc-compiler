@@ -332,6 +332,7 @@ public class SourceLexer {
 	        case "false": return TokenType.FALSE;
 	        case "continue": return TokenType.CONTINUE;
 	        case "break": return TokenType.BREAK;
+	        case "sizeof": return TokenType.SIZEOF;
 	        default: return TokenType.IDENTIFIER;
 	    }
 	}

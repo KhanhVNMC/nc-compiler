@@ -2,7 +2,7 @@ package com.gkvn.parser.ast.expressions.identifiables;
 
 import com.gkvn.parser.ast.expressions.ExpressionNode;
 
-public class SubscriptNode extends Identifiable {
+public class SubscriptNode extends ExpressionNode {
 	public ExpressionNode identifier;
 	public ExpressionNode offset;
 

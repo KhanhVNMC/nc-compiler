@@ -2,6 +2,8 @@ struct Child {
     uint test[36];
 };
 
+int func();
+
 struct Parent {
     Child c;
     Child c2;
@@ -15,6 +17,5 @@ struct Compound {
 };
 
 uint main() {
-    char test = (char) it_only_affect_the_closest_token + not_this_one;
-    ((char) a) + ((char) b);
+    uint a = 1;
 }
